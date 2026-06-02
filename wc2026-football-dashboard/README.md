@@ -1,8 +1,17 @@
-# WC 2026 Value Opportunity Dashboard
+# World Cup 2026 Recruitment Intelligence Dashboard
 
-Recruitment decision-support dashboard for an English football club preparing for the 2026 FIFA World Cup.
+Recruitment intelligence for identifying high-upside World Cup targets before the tournament and validating outcomes during the competition.
 
-No synthetic data is used. If real historical or tournament data is missing, the relevant model or validation section is disabled or marked as pending.
+No synthetic data is used. If real historical or tournament data is missing, the relevant model or validation section is disabled or marked as not yet available.
+
+Product naming options considered:
+
+- World Cup 2026 Recruitment Intelligence Dashboard
+- WC 2026 Scouting Intelligence Hub
+- World Cup 2026 Player Opportunity Intelligence
+- WC 2026 Recruitment Opportunity Hub
+
+The implemented default is **World Cup 2026 Recruitment Intelligence Dashboard** because it best matches the business-facing recruitment workflow.
 
 ## Business Aim
 
@@ -19,6 +28,22 @@ Which players offer the best value opportunity when expected World Cup impact is
 3. Breakout analysis: identify young value-opportunity players who could use the tournament as a breakout platform.
 4. During or after the tournament: ingest real World Cup match data from `data/raw/tournament_match_data.csv`.
 5. Validation: compare expected impact with actual impact and classify players as Overperformed, Met expectations, Underperformed or Pending.
+
+The first app view is an executive dashboard for recruitment decisions. Detailed source availability, refresh diagnostics, model readiness, training metrics and feature coverage live in the **Data & Model Ops** tab.
+
+## Expected WC Impact
+
+Expected WC Impact estimates how strongly a player is expected to influence the 2026 World Cup based on the active historical model. It is a tournament-impact score, not an overall player-quality rating.
+
+Interpretation bands:
+
+- 0-30: Low
+- 30-50: Moderate
+- 50-70: Strong
+- 70-85: High
+- 85+: Elite
+
+The current supervised MVP is the limited historical model. It is trained on real World Cup-derived historical player-tournament rows and actual tournament impact outcomes. It does not yet include rich club-form, market, scouting or injury inputs, so the dashboard labels that limitation clearly.
 
 ## Data Refresh From The Dashboard
 
@@ -187,7 +212,7 @@ python scripts/validate_project.py
 python scripts/refresh_data.py
 ```
 
-7. Run the app. The Model tab will show whether the limited or full supervised model is active.
+7. Run the app. The Data & Model Ops tab will show whether the limited or full supervised model is active.
 
 No synthetic rows are used. If target rows are missing, the model is disabled because historical target data is missing. If rich predictor coverage is too thin, the app uses the limited supervised historical model where possible and clearly labels it as an MVP model.
 

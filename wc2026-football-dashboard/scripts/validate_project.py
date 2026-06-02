@@ -301,7 +301,7 @@ def validate_imports(rows: list[ReportRow]) -> None:
 
 
 def print_report(rows: list[ReportRow]) -> None:
-    print("WC 2026 Value Opportunity Dashboard validation")
+    print("World Cup 2026 Recruitment Intelligence Dashboard validation")
     print("=" * 52)
     for level, section, message in rows:
         print(f"[{level}] {section}: {message}")

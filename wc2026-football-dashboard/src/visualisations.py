@@ -23,6 +23,31 @@ METRIC_LABELS = {
     "xa_proxy": "xA proxy",
 }
 
+CHART_FONT = "Inter, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif"
+CHART_PALETTE = ["#0f766e", "#2563eb", "#d97706", "#7c3aed", "#dc2626", "#0891b2", "#65a30d"]
+BUSINESS_HOVER_FIELDS = [
+    "player_name",
+    "country",
+    "club",
+    "position",
+    "market_value_label",
+    "expected_impact_label",
+    "value_opportunity_label",
+    "recommendation",
+    "risk_band",
+]
+BUSINESS_HOVER_TEMPLATE = (
+    "<b>%{customdata[0]}</b><br>"
+    "%{customdata[1]} · %{customdata[3]}<br>"
+    "%{customdata[2]}<br>"
+    "Market value: %{customdata[4]}<br>"
+    "Expected WC Impact: %{customdata[5]}<br>"
+    "Value Opportunity: %{customdata[6]}<br>"
+    "Recommendation: %{customdata[7]}<br>"
+    "Risk: %{customdata[8]}"
+    "<extra></extra>"
+)
+
 
 def _label(metric: str) -> str:
     return METRIC_LABELS.get(metric, metric.replace("_", " ").title())
@@ -36,6 +61,71 @@ def _empty_message(text: str, height: int = 430) -> go.Figure:
     fig = go.Figure()
     fig.add_annotation(text=text, showarrow=False, x=0.5, y=0.5)
     fig.update_layout(height=height, xaxis_visible=False, yaxis_visible=False)
+    return fig
+
+
+def _format_eur(value: object) -> str:
+    parsed = pd.to_numeric(value, errors="coerce")
+    if pd.isna(parsed):
+        return "Unavailable"
+    parsed = float(parsed)
+    if parsed >= 1_000_000:
+        return f"€{parsed / 1_000_000:.1f}M"
+    if parsed >= 1_000:
+        return f"€{parsed / 1_000:.0f}K"
+    return f"€{parsed:.0f}"
+
+
+def _score_label(value: object) -> str:
+    parsed = pd.to_numeric(value, errors="coerce")
+    return "Unavailable" if pd.isna(parsed) else f"{float(parsed):.1f}"
+
+
+def _business_chart_df(df: pd.DataFrame) -> pd.DataFrame:
+    chart_df = df.copy()
+    chart_df["market_value_label"] = chart_df.get("market_value_eur", pd.Series(index=chart_df.index, dtype=float)).map(_format_eur)
+    chart_df["expected_impact_label"] = chart_df.get(
+        "pre_tournament_expected_impact_score", pd.Series(index=chart_df.index, dtype=float)
+    ).map(_score_label)
+    chart_df["value_opportunity_label"] = chart_df.get(
+        "value_opportunity_score", pd.Series(index=chart_df.index, dtype=float)
+    ).map(_score_label)
+    for col in ["player_name", "country", "club", "position", "recommendation", "risk_band"]:
+        if col not in chart_df.columns:
+            chart_df[col] = "Unavailable"
+    return chart_df
+
+
+def _marker_size_column(chart_df: pd.DataFrame, candidates: list[str]) -> str | None:
+    for col in candidates:
+        if col not in chart_df.columns:
+            continue
+        values = pd.to_numeric(chart_df[col], errors="coerce")
+        if values.dropna().empty:
+            continue
+        chart_df["_marker_size"] = values.fillna(1.0).clip(lower=1.0)
+        return "_marker_size"
+    return None
+
+
+def _apply_business_layout(fig: go.Figure, height: int = 470) -> go.Figure:
+    fig.update_layout(
+        height=height,
+        margin=dict(l=18, r=24, t=28, b=34),
+        font=dict(family=CHART_FONT, size=12, color="#0f172a"),
+        paper_bgcolor="#ffffff",
+        plot_bgcolor="#ffffff",
+        legend_title_text="",
+        hoverlabel=dict(bgcolor="#0f172a", bordercolor="#0f172a", font=dict(color="#f8fafc", size=12)),
+    )
+    fig.update_xaxes(showgrid=True, gridcolor="#e2e8f0", zeroline=False, title_font=dict(size=12))
+    fig.update_yaxes(showgrid=True, gridcolor="#e2e8f0", zeroline=False, title_font=dict(size=12))
+    return fig
+
+
+def _apply_business_hover(fig: go.Figure) -> go.Figure:
+    for trace in fig.data:
+        trace.update(hovertemplate=BUSINESS_HOVER_TEMPLATE)
     return fig
 
 
@@ -135,20 +225,25 @@ def create_top_players_chart(df: pd.DataFrame, profile: str) -> go.Figure:
     """Create top player chart for a predefined profile."""
 
     score_col = get_profile_score_column(profile)
+    if score_col not in df.columns or df[score_col].dropna().empty:
+        return _empty_message("Profile score data is not yet available.", height=620)
     eligible_positions = get_eligible_positions(profile)
     chart_df = df[df["position"].isin(eligible_positions)] if eligible_positions else df
-    chart_df = chart_df.nlargest(20, score_col).sort_values(score_col)
+    chart_df = _business_chart_df(chart_df.nlargest(20, score_col).sort_values(score_col))
     fig = px.bar(
         chart_df,
         y="player_name",
         x=score_col,
         color="position",
         orientation="h",
-        hover_data=["country", "club", "league", "age", "market_value_eur", "pre_tournament_expected_impact_score"],
+        custom_data=BUSINESS_HOVER_FIELDS,
+        color_discrete_sequence=CHART_PALETTE,
         labels={score_col: "Profile score", "player_name": "Player"},
+        text=score_col,
     )
-    fig.update_layout(height=620, margin=dict(l=10, r=20, t=20, b=20), legend_title_text="Position")
-    return fig
+    fig.update_traces(texttemplate="%{text:.1f}", textposition="outside", cliponaxis=False)
+    fig.update_xaxes(range=[0, 105], tickformat=".0f")
+    return _apply_business_hover(_apply_business_layout(fig, height=620))
 
 
 def create_market_value_vs_expected_impact_chart(df: pd.DataFrame) -> go.Figure:
@@ -180,10 +275,11 @@ def create_price_to_impact_quadrant_chart(df: pd.DataFrame) -> go.Figure:
     chart_df = df[df["pre_tournament_expected_impact_score"].notna() & df["market_value_eur"].notna()].copy()
     if chart_df.empty:
         return _empty_message("Market value or expected-impact data is unavailable.", height=470)
+    chart_df = _business_chart_df(chart_df)
 
     value_threshold = chart_df["market_value_eur"].median()
     impact_threshold = chart_df["pre_tournament_expected_impact_score"].median()
-    size_col = "value_opportunity_score" if chart_df.get("value_opportunity_score", pd.Series(dtype=float)).notna().any() else None
+    size_col = _marker_size_column(chart_df, ["value_opportunity_score"])
     fig = px.scatter(
         chart_df,
         x="market_value_eur",
@@ -191,24 +287,38 @@ def create_price_to_impact_quadrant_chart(df: pd.DataFrame) -> go.Figure:
         color="recommendation",
         size=size_col,
         hover_name="player_name",
-        hover_data=_available_columns(chart_df, ["country", "club", "position", "age", "value_efficiency_score"]),
+        custom_data=BUSINESS_HOVER_FIELDS,
+        color_discrete_sequence=CHART_PALETTE,
         labels={
-            "market_value_eur": "Market value (EUR)",
+            "market_value_eur": "Market value",
             "pre_tournament_expected_impact_score": "Expected WC impact",
         },
+        size_max=26,
     )
-    fig.add_vline(x=value_threshold, line_dash="dash", line_color="#94a3b8")
-    fig.add_hline(y=impact_threshold, line_dash="dash", line_color="#94a3b8")
+    fig.add_vline(x=value_threshold, line_dash="dash", line_color="#64748b", line_width=1.2)
+    fig.add_hline(y=impact_threshold, line_dash="dash", line_color="#64748b", line_width=1.2)
     annotations = [
-        ("Undervalued targets", value_threshold * 0.45, min(100, impact_threshold + 15)),
-        ("Premium targets", value_threshold * 1.45, min(100, impact_threshold + 15)),
-        ("Low-cost depth", value_threshold * 0.45, max(0, impact_threshold - 15)),
-        ("Overpriced / low impact", value_threshold * 1.45, max(0, impact_threshold - 15)),
+        ("Undervalued<br>targets", value_threshold * 0.45, min(98, impact_threshold + 18)),
+        ("Premium<br>targets", value_threshold * 1.45, min(98, impact_threshold + 18)),
+        ("Low-cost<br>depth", value_threshold * 0.45, max(5, impact_threshold - 18)),
+        ("Low-impact /<br>overpriced", value_threshold * 1.45, max(5, impact_threshold - 18)),
     ]
     for text, x, y in annotations:
-        fig.add_annotation(text=text, x=x, y=y, showarrow=False, font=dict(size=12, color="#334155"))
-    fig.update_layout(height=500, margin=dict(l=10, r=20, t=20, b=20), xaxis_tickprefix="EUR ")
-    return fig
+        fig.add_annotation(
+            text=text,
+            x=x,
+            y=y,
+            showarrow=False,
+            align="center",
+            font=dict(size=12, color="#334155"),
+            bgcolor="rgba(248,250,252,0.92)",
+            bordercolor="#cbd5e1",
+            borderwidth=1,
+            borderpad=6,
+        )
+    fig.update_xaxes(tickprefix="€", tickformat="~s")
+    fig.update_yaxes(range=[0, 100], tickformat=".0f")
+    return _apply_business_hover(_apply_business_layout(fig, height=520))
 
 
 def create_market_value_vs_value_opportunity_chart(df: pd.DataFrame) -> go.Figure:
@@ -220,11 +330,8 @@ def create_market_value_vs_value_opportunity_chart(df: pd.DataFrame) -> go.Figur
     chart_df = df[df["market_value_eur"].notna() & df["value_opportunity_score"].notna()].copy()
     if chart_df.empty:
         return _empty_message("Market value or value-opportunity data is unavailable.", height=470)
-    size_col = (
-        "pre_tournament_expected_impact_score"
-        if chart_df.get("pre_tournament_expected_impact_score", pd.Series(dtype=float)).notna().any()
-        else None
-    )
+    chart_df = _business_chart_df(chart_df)
+    size_col = _marker_size_column(chart_df, ["pre_tournament_expected_impact_score"])
     fig = px.scatter(
         chart_df,
         x="market_value_eur",
@@ -232,11 +339,13 @@ def create_market_value_vs_value_opportunity_chart(df: pd.DataFrame) -> go.Figur
         color="recommendation",
         size=size_col,
         hover_name="player_name",
-        hover_data=_available_columns(chart_df, ["country", "club", "position", "age", "market_value_source"]),
+        custom_data=BUSINESS_HOVER_FIELDS,
+        color_discrete_sequence=CHART_PALETTE,
         labels={"market_value_eur": "Market value (EUR)", "value_opportunity_score": "Value opportunity score"},
     )
-    fig.update_layout(height=470, margin=dict(l=10, r=20, t=20, b=20), xaxis_tickprefix="EUR ")
-    return fig
+    fig.update_xaxes(tickprefix="€", tickformat="~s")
+    fig.update_yaxes(range=[0, 100], tickformat=".0f")
+    return _apply_business_hover(_apply_business_layout(fig, height=470))
 
 
 def create_age_vs_value_opportunity_chart(df: pd.DataFrame) -> go.Figure:
@@ -248,11 +357,8 @@ def create_age_vs_value_opportunity_chart(df: pd.DataFrame) -> go.Figure:
     chart_df = df[df["age"].notna() & df["value_opportunity_score"].notna()].copy()
     if chart_df.empty:
         return _empty_message("Age or value-opportunity data is unavailable.")
-    size_col = (
-        "pre_tournament_expected_impact_score"
-        if chart_df.get("pre_tournament_expected_impact_score", pd.Series(dtype=float)).notna().any()
-        else None
-    )
+    chart_df = _business_chart_df(chart_df)
+    size_col = _marker_size_column(chart_df, ["pre_tournament_expected_impact_score"])
     fig = px.scatter(
         chart_df,
         x="age",
@@ -260,11 +366,12 @@ def create_age_vs_value_opportunity_chart(df: pd.DataFrame) -> go.Figure:
         color="position",
         size=size_col,
         hover_name="player_name",
-        hover_data=_available_columns(chart_df, ["country", "club", "market_value_eur", "recommendation"]),
+        custom_data=BUSINESS_HOVER_FIELDS,
+        color_discrete_sequence=CHART_PALETTE,
         labels={"age": "Age", "value_opportunity_score": "Value opportunity score"},
     )
-    fig.update_layout(height=430, margin=dict(l=10, r=20, t=20, b=20))
-    return fig
+    fig.update_yaxes(range=[0, 100], tickformat=".0f")
+    return _apply_business_hover(_apply_business_layout(fig, height=430))
 
 
 def create_breakout_candidates_chart(df: pd.DataFrame) -> go.Figure:
@@ -276,18 +383,14 @@ def create_breakout_candidates_chart(df: pd.DataFrame) -> go.Figure:
     chart_df = df[df["age"].notna() & df["pre_tournament_expected_impact_score"].notna()].copy()
     if chart_df.empty:
         return _empty_message("Age or expected-impact data is unavailable.")
+    chart_df = _business_chart_df(chart_df)
 
     color_col = (
         "value_opportunity_score"
         if "value_opportunity_score" in chart_df.columns and chart_df["value_opportunity_score"].notna().any()
         else "recommendation"
     )
-    if "market_value_eur" in chart_df.columns and chart_df["market_value_eur"].notna().any():
-        size_col = "market_value_eur"
-    elif "recent_senior_minutes" in chart_df.columns and chart_df["recent_senior_minutes"].notna().any():
-        size_col = "recent_senior_minutes"
-    else:
-        size_col = None
+    size_col = _marker_size_column(chart_df, ["market_value_eur", "recent_senior_minutes"])
 
     fig = px.scatter(
         chart_df,
@@ -296,18 +399,9 @@ def create_breakout_candidates_chart(df: pd.DataFrame) -> go.Figure:
         color=color_col,
         size=size_col,
         hover_name="player_name",
-        hover_data=_available_columns(
-            chart_df,
-            [
-                "country",
-                "club",
-                "position",
-                "best_profile",
-                "breakout_candidate_score",
-                "is_world_cup_debutant",
-                "previous_world_cup_minutes",
-            ],
-        ),
+        custom_data=BUSINESS_HOVER_FIELDS,
+        color_continuous_scale=["#dbeafe", "#2563eb", "#0f766e"] if color_col == "value_opportunity_score" else None,
+        color_discrete_sequence=CHART_PALETTE if color_col != "value_opportunity_score" else None,
         labels={
             "age": "Age",
             "pre_tournament_expected_impact_score": "Expected WC impact",
@@ -315,8 +409,8 @@ def create_breakout_candidates_chart(df: pd.DataFrame) -> go.Figure:
         },
         size_max=28,
     )
-    fig.update_layout(height=480, margin=dict(l=10, r=20, t=20, b=20))
-    return fig
+    fig.update_yaxes(range=[0, 100], tickformat=".0f")
+    return _apply_business_hover(_apply_business_layout(fig, height=480))
 
 
 def create_predicted_vs_actual_impact_chart(df: pd.DataFrame) -> go.Figure:
@@ -326,7 +420,7 @@ def create_predicted_vs_actual_impact_chart(df: pd.DataFrame) -> go.Figure:
     if chart_df.empty:
         fig = go.Figure()
         fig.add_annotation(
-            text="Actual tournament data is pending. Add rows to data/raw/tournament_match_data.csv and refresh.",
+            text="Actual tournament data is not yet available. Add real 2026 match rows and refresh.",
             showarrow=False,
             x=0.5,
             y=0.5,
@@ -365,7 +459,7 @@ def create_performance_delta_distribution_chart(df: pd.DataFrame) -> go.Figure:
     if chart_df.empty:
         fig = go.Figure()
         fig.add_annotation(
-            text="Performance deltas are pending until real tournament match data is added.",
+            text="Performance deltas are not yet available until real tournament match data is added.",
             showarrow=False,
             x=0.5,
             y=0.5,
@@ -388,21 +482,21 @@ def create_top_value_opportunities_chart(df: pd.DataFrame) -> go.Figure:
 
     if "value_opportunity_score" not in df.columns or df["value_opportunity_score"].dropna().empty:
         return _empty_message("Value-opportunity data is unavailable.", height=620)
-    chart_df = df.nlargest(20, "value_opportunity_score").sort_values("value_opportunity_score")
+    chart_df = _business_chart_df(df.nlargest(20, "value_opportunity_score").sort_values("value_opportunity_score"))
     fig = px.bar(
         chart_df,
         y="player_name",
         x="value_opportunity_score",
-        color="position",
+        color="recommendation",
         orientation="h",
-        hover_data=_available_columns(
-            chart_df,
-            ["country", "club", "market_value_eur", "pre_tournament_expected_impact_score", "recommendation"],
-        ),
+        custom_data=BUSINESS_HOVER_FIELDS,
+        color_discrete_sequence=CHART_PALETTE,
         labels={"player_name": "Player", "value_opportunity_score": "Value opportunity score"},
+        text="value_opportunity_score",
     )
-    fig.update_layout(height=620, margin=dict(l=10, r=20, t=20, b=20), legend_title_text="Position")
-    return fig
+    fig.update_traces(texttemplate="%{text:.1f}", textposition="outside", cliponaxis=False)
+    fig.update_xaxes(range=[0, 105], tickformat=".0f")
+    return _apply_business_hover(_apply_business_layout(fig, height=620))
 
 
 def create_expected_impact_distribution_chart(df: pd.DataFrame) -> go.Figure:
@@ -429,7 +523,8 @@ def create_expected_impact_vs_value_efficiency_chart(df: pd.DataFrame) -> go.Fig
     chart_df = df[df["value_efficiency_score"].notna() & df["pre_tournament_expected_impact_score"].notna()].copy()
     if chart_df.empty:
         return _empty_message("Expected impact or value-efficiency data is unavailable.")
-    size_col = "value_opportunity_score" if chart_df.get("value_opportunity_score", pd.Series(dtype=float)).notna().any() else None
+    chart_df = _business_chart_df(chart_df)
+    size_col = _marker_size_column(chart_df, ["value_opportunity_score"])
     fig = px.scatter(
         chart_df,
         x="value_efficiency_score",
@@ -437,14 +532,16 @@ def create_expected_impact_vs_value_efficiency_chart(df: pd.DataFrame) -> go.Fig
         color="risk_band",
         size=size_col,
         hover_name="player_name",
-        hover_data=_available_columns(chart_df, ["country", "club", "position", "market_value_eur", "recommendation"]),
+        custom_data=BUSINESS_HOVER_FIELDS,
+        color_discrete_sequence=CHART_PALETTE,
         labels={
             "value_efficiency_score": "Value efficiency",
             "pre_tournament_expected_impact_score": "Expected WC impact",
         },
     )
-    fig.update_layout(height=430, margin=dict(l=10, r=20, t=20, b=20))
-    return fig
+    fig.update_xaxes(range=[0, 100], tickformat=".0f")
+    fig.update_yaxes(range=[0, 100], tickformat=".0f")
+    return _apply_business_hover(_apply_business_layout(fig, height=430))
 
 
 def create_recommendation_breakdown_chart(df: pd.DataFrame) -> go.Figure:
@@ -452,9 +549,17 @@ def create_recommendation_breakdown_chart(df: pd.DataFrame) -> go.Figure:
 
     counts = df["recommendation"].fillna("Unknown").value_counts().reset_index()
     counts.columns = ["Recommendation", "Players"]
-    fig = px.bar(counts, x="Recommendation", y="Players", color="Recommendation", text="Players")
-    fig.update_layout(height=360, margin=dict(l=10, r=20, t=20, b=20), showlegend=False)
-    return fig
+    fig = px.bar(
+        counts,
+        x="Recommendation",
+        y="Players",
+        color="Recommendation",
+        text="Players",
+        color_discrete_sequence=CHART_PALETTE,
+    )
+    fig.update_traces(textposition="outside", cliponaxis=False)
+    fig.update_layout(showlegend=False)
+    return _apply_business_layout(fig, height=360)
 
 
 def create_risk_vs_opportunity_matrix(df: pd.DataFrame) -> go.Figure:
@@ -466,11 +571,8 @@ def create_risk_vs_opportunity_matrix(df: pd.DataFrame) -> go.Figure:
     chart_df = df[df["risk_score"].notna() & df["value_opportunity_score"].notna()].copy()
     if chart_df.empty:
         return _empty_message("Risk or value-opportunity data is unavailable.")
-    size_col = (
-        "pre_tournament_expected_impact_score"
-        if chart_df.get("pre_tournament_expected_impact_score", pd.Series(dtype=float)).notna().any()
-        else None
-    )
+    chart_df = _business_chart_df(chart_df)
+    size_col = _marker_size_column(chart_df, ["pre_tournament_expected_impact_score"])
     fig = px.scatter(
         chart_df,
         x="risk_score",
@@ -478,11 +580,13 @@ def create_risk_vs_opportunity_matrix(df: pd.DataFrame) -> go.Figure:
         color="recommendation",
         size=size_col,
         hover_name="player_name",
-        hover_data=_available_columns(chart_df, ["country", "club", "age", "market_value_eur", "risk_reason"]),
+        custom_data=BUSINESS_HOVER_FIELDS,
+        color_discrete_sequence=CHART_PALETTE,
         labels={"risk_score": "Risk score", "value_opportunity_score": "Value opportunity score"},
     )
-    fig.update_layout(height=430, margin=dict(l=10, r=20, t=20, b=20))
-    return fig
+    fig.update_xaxes(range=[0, 100], tickformat=".0f")
+    fig.update_yaxes(range=[0, 100], tickformat=".0f")
+    return _apply_business_hover(_apply_business_layout(fig, height=430))
 
 
 def create_market_value_vs_score_chart(df: pd.DataFrame) -> go.Figure:

@@ -27,10 +27,10 @@ def format_currency(value: float) -> str:
         return "Unavailable"
     value = float(value)
     if value >= 1_000_000:
-        return f"EUR {value / 1_000_000:.1f}m"
+        return f"€{value / 1_000_000:.1f}M"
     if value >= 1_000:
-        return f"EUR {value / 1_000:.0f}k"
-    return f"EUR {value:.0f}"
+        return f"€{value / 1_000:.0f}K"
+    return f"€{value:.0f}"
 
 
 def score_badge(score: float) -> str:

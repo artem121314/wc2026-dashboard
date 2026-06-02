@@ -219,7 +219,7 @@ python scripts/validate_project.py
 python scripts/refresh_data.py
 ```
 
-8. Open the dashboard. The Model tab will show the supervised model as available once training succeeds.
+8. Open the dashboard. The Data & Model Ops tab will show the supervised model as available once training succeeds.
 
 ## Modelling Readiness Rules
 
