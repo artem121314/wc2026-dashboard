@@ -16,8 +16,9 @@ Which players offer the best value opportunity when expected World Cup impact is
 
 1. Before the tournament: use real pre-tournament player data to estimate expected World Cup impact.
 2. Recruitment ranking: rank players by value opportunity.
-3. During or after the tournament: ingest real World Cup match data from `data/raw/tournament_match_data.csv`.
-4. Validation: compare expected impact with actual impact and classify players as Overperformed, Met expectations, Underperformed or Pending.
+3. Breakout analysis: identify young value-opportunity players who could use the tournament as a breakout platform.
+4. During or after the tournament: ingest real World Cup match data from `data/raw/tournament_match_data.csv`.
+5. Validation: compare expected impact with actual impact and classify players as Overperformed, Met expectations, Underperformed or Pending.
 
 ## Data Refresh From The Dashboard
 
@@ -67,6 +68,18 @@ Column-level schemas are documented in `docs/data_schema.md`. Additional source 
 
 The supervised model trains only if `data/historical/world_cup_player_training_data.csv` contains real curated historical World Cup data with these columns:
 
+Each historical row should be one player-tournament observation:
+
+```text
+player_name + tournament_year
+```
+
+Examples:
+
+- Player A before World Cup 2014, then actual impact at World Cup 2014.
+- Player B before World Cup 2018, then actual impact at World Cup 2018.
+- Player C before World Cup 2022, then actual impact at World Cup 2022.
+
 ```text
 tournament_year
 player_name
@@ -87,6 +100,20 @@ recent_form_score
 role_fit_score
 actual_tournament_impact_score
 ```
+
+Optional historical modelling features:
+
+```text
+is_world_cup_debutant
+previous_world_cup_minutes
+previous_world_cup_matches
+previous_world_cup_impact_score
+senior_national_team_caps
+major_tournament_experience
+age_group
+```
+
+These optional fields can improve the model when real curated values exist, but they are not required for model training.
 
 Recommended historical tournaments:
 
@@ -132,6 +159,16 @@ It evaluates MAE, RMSE and R-squared, selects the model with the lowest MAE, and
 pre_tournament_expected_impact_score
 expected_impact_source = supervised_historical_model
 ```
+
+The model is trained on player-tournament observations, not on repeated appearances by the same players. This lets it generalise from historical player profiles to new 2026 players, including players who have never appeared at a World Cup.
+
+## Handling World Cup Debutants
+
+Many young value targets may be playing their first World Cup. This is expected, not a data problem.
+
+Previous World Cup experience is optional. If `is_world_cup_debutant`, `previous_world_cup_minutes`, or related experience fields are missing, the dashboard does not invent them. It shows `Not provided` and disables only the debutant-specific filters.
+
+The Breakout Candidates tab is designed for young first-time or low-experience players. It combines expected impact, value efficiency, age/resale profile, role fit and playing-time confidence into `breakout_candidate_score`.
 
 ## If Historical Data Is Missing
 

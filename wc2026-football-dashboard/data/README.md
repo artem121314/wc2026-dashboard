@@ -25,11 +25,30 @@ The dashboard is designed to ingest compliant local CSV exports. It does not scr
 
 The current repository includes raw CSVs seeded from the existing real project dataset. Missing values were not fabricated. If a future source does not contain a field, leave it blank and let the pipeline disable the affected score or section.
 
+Optional debutant and experience fields can be supplied in the raw player pool or performance input files when a real source provides them:
+
+- `is_world_cup_debutant`
+- `previous_world_cup_minutes`
+- `previous_world_cup_matches`
+- `previous_world_cup_impact_score`
+- `senior_national_team_caps`
+- `major_tournament_experience`
+
+These fields are not required. Missing previous World Cup experience is normal for young targets and does not disable expected-impact scoring. The dashboard shows missing debutant or previous World Cup fields as `Not provided` and disables only the related filters.
+
 ## Historical File
 
 `data/historical/world_cup_player_training_data.csv` is optional until real curated historical data is available.
 
 When this file exists and has valid real rows, the supervised expected-impact model trains from previous World Cups. When it is missing, empty, or invalid, the model is disabled and the dashboard clearly labels any expected impact as a transparent baseline fallback when baseline inputs are available.
+
+The historical training file should use player-tournament observations. Each row should represent one player before one World Cup and their actual impact in that tournament, for example:
+
+- Player A before World Cup 2014, then actual impact at World Cup 2014.
+- Player B before World Cup 2018, then actual impact at World Cup 2018.
+- Player C before World Cup 2022, then actual impact at World Cup 2022.
+
+The model does not require a 2026 player to have appeared at a previous World Cup. Previous World Cup experience fields are optional model signals only. If real curated historical data includes them, the supervised model can use them; if not, the model trains from the available player-profile, role, team-context and performance features.
 
 ## Tournament Updates
 

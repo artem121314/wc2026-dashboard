@@ -192,6 +192,15 @@ def save_processed_data(df: pd.DataFrame, path: Path | str = PROCESSED_DASHBOARD
         "expected_impact_available": int(df["pre_tournament_expected_impact_score"].notna().sum())
         if "pre_tournament_expected_impact_score" in df.columns
         else 0,
+        "breakout_candidate_score_available": int(df["breakout_candidate_score"].notna().sum())
+        if "breakout_candidate_score" in df.columns
+        else 0,
+        "world_cup_debutant_values_available": int(df["is_world_cup_debutant"].notna().sum())
+        if "is_world_cup_debutant" in df.columns
+        else 0,
+        "previous_world_cup_minutes_available": int(df["previous_world_cup_minutes"].notna().sum())
+        if "previous_world_cup_minutes" in df.columns
+        else 0,
         "actual_tournament_impact_available": int(df["actual_tournament_impact_score"].notna().sum())
         if "actual_tournament_impact_score" in df.columns
         else 0,

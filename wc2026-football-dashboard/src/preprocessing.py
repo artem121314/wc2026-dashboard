@@ -48,6 +48,15 @@ OPTIONAL_NUMERIC_COLUMNS = [
     "final_squad_selection_score",
     "caps",
     "international_goals",
+    "previous_world_cup_minutes",
+    "previous_world_cup_matches",
+    "previous_world_cup_impact_score",
+    "senior_national_team_caps",
+    "major_tournament_experience",
+]
+
+OPTIONAL_BOOLEAN_COLUMNS = [
+    "is_world_cup_debutant",
 ]
 
 
@@ -59,12 +68,37 @@ def validate_columns(df: pd.DataFrame) -> None:
         raise ValueError(f"Missing required columns: {', '.join(missing)}")
 
 
+def _coerce_optional_boolean(series: pd.Series) -> pd.Series:
+    """Coerce common real CSV boolean representations while preserving missing values."""
+
+    if pd.api.types.is_bool_dtype(series):
+        return series.astype("boolean")
+    normalised = series.astype(str).str.strip().str.lower()
+    mapped = normalised.map(
+        {
+            "true": True,
+            "1": True,
+            "yes": True,
+            "y": True,
+            "false": False,
+            "0": False,
+            "no": False,
+            "n": False,
+        }
+    )
+    mapped[series.isna()] = pd.NA
+    return mapped.astype("boolean")
+
+
 def clean_player_data(df: pd.DataFrame) -> pd.DataFrame:
     """Coerce types and clip ranges while preserving missing real values."""
 
     validate_columns(df)
     df = df.copy()
     for col in OPTIONAL_NUMERIC_COLUMNS:
+        if col not in df.columns:
+            df[col] = pd.NA
+    for col in OPTIONAL_BOOLEAN_COLUMNS:
         if col not in df.columns:
             df[col] = pd.NA
     text_cols = [
@@ -104,9 +138,17 @@ def clean_player_data(df: pd.DataFrame) -> pd.DataFrame:
     for col in text_cols:
         df[col] = df[col].fillna("Unknown").astype(str).str.strip()
 
-    numeric_cols = [col for col in df.columns if col not in text_cols]
+    for col in OPTIONAL_BOOLEAN_COLUMNS:
+        df[col] = _coerce_optional_boolean(df[col])
+
+    numeric_cols = [col for col in df.columns if col not in text_cols and col not in OPTIONAL_BOOLEAN_COLUMNS]
     for col in numeric_cols:
         df[col] = pd.to_numeric(df[col], errors="coerce")
+
+    if "caps" in df.columns:
+        senior_caps = pd.to_numeric(df["senior_national_team_caps"], errors="coerce")
+        caps = pd.to_numeric(df["caps"], errors="coerce")
+        df["senior_national_team_caps"] = senior_caps.where(senior_caps.notna(), caps)
 
     df["age"] = df["age"].clip(16, 45).round()
     df["minutes"] = df["minutes"].clip(0, 5000).round()
@@ -121,6 +163,7 @@ def clean_player_data(df: pd.DataFrame) -> pd.DataFrame:
     ]
     for col in score_cols:
         df[col] = df[col].clip(0, 100)
+    df["previous_world_cup_impact_score"] = df["previous_world_cup_impact_score"].clip(0, 100)
 
     return df
 

@@ -26,7 +26,7 @@ FALLBACK_WARNING = (
 MODEL_STATUS_AVAILABLE = "available"
 MODEL_STATUS_DISABLED = "disabled_missing_real_historical_data"
 
-EXPECTED_IMPACT_FEATURES = [
+BASE_EXPECTED_IMPACT_FEATURES = [
     "age",
     "position",
     "market_value_before_tournament",
@@ -44,15 +44,26 @@ EXPECTED_IMPACT_FEATURES = [
     "role_fit_score",
 ]
 
+OPTIONAL_EXPERIENCE_FEATURES = [
+    "is_world_cup_debutant",
+    "previous_world_cup_minutes",
+    "previous_world_cup_matches",
+    "previous_world_cup_impact_score",
+    "senior_national_team_caps",
+    "major_tournament_experience",
+    "age_group",
+]
+
+EXPECTED_IMPACT_FEATURES = [*BASE_EXPECTED_IMPACT_FEATURES, *OPTIONAL_EXPERIENCE_FEATURES]
+
 REQUIRED_HISTORICAL_COLUMNS = [
     "tournament_year",
     "player_name",
-    *EXPECTED_IMPACT_FEATURES,
+    *BASE_EXPECTED_IMPACT_FEATURES,
     "actual_tournament_impact_score",
 ]
 
-NUMERIC_FEATURES = [feature for feature in EXPECTED_IMPACT_FEATURES if feature != "position"]
-CATEGORICAL_FEATURES = ["position"]
+CATEGORICAL_FEATURES = ["position", "age_group"]
 
 BASELINE_COMPONENTS = {
     "Current performance": ("current_performance_score", 0.25),
@@ -80,84 +91,156 @@ def load_historical_training_data(path: Path | str = HISTORICAL_TRAINING_PATH) -
     return data
 
 
-def _coalesce_feature(df: pd.DataFrame, target: str, aliases: list[str], default: Any) -> pd.Series:
+def _coalesce_feature(df: pd.DataFrame, target: str, aliases: list[str], default: Any = pd.NA) -> pd.Series:
     values = pd.Series(pd.NA, index=df.index)
     for alias in [target, *aliases]:
         if alias in df.columns:
             candidate = df[alias]
-            if target == "position":
+            if target in CATEGORICAL_FEATURES:
                 values = candidate.combine_first(values)
             else:
                 values = pd.to_numeric(values, errors="coerce").combine_first(pd.to_numeric(candidate, errors="coerce"))
-    return values.fillna(default)
+    if default is not pd.NA:
+        values = values.fillna(default)
+    return values
 
 
-def prepare_expected_impact_features(df: pd.DataFrame) -> pd.DataFrame:
+def _coalesce_boolean_feature(df: pd.DataFrame, target: str) -> pd.Series:
+    if target not in df.columns:
+        return pd.Series(pd.NA, index=df.index)
+    series = df[target]
+    if pd.api.types.is_bool_dtype(series):
+        return series.astype("boolean").astype("Int64").astype(float)
+    normalised = series.astype(str).str.strip().str.lower()
+    mapped = normalised.map(
+        {
+            "true": 1.0,
+            "1": 1.0,
+            "yes": 1.0,
+            "y": 1.0,
+            "false": 0.0,
+            "0": 0.0,
+            "no": 0.0,
+            "n": 0.0,
+        }
+    )
+    mapped[series.isna()] = pd.NA
+    return pd.to_numeric(mapped, errors="coerce")
+
+
+def _derive_age_group(age: pd.Series) -> pd.Series:
+    age = pd.to_numeric(age, errors="coerce")
+    group = pd.Series(pd.NA, index=age.index, dtype="object")
+    group.loc[age <= 21] = "U21"
+    group.loc[age.between(22, 23)] = "U23"
+    group.loc[age.between(24, 25)] = "U25"
+    group.loc[age.between(26, 29)] = "Prime"
+    group.loc[age >= 30] = "Veteran"
+    return group
+
+
+def select_expected_impact_features(training_data: pd.DataFrame) -> list[str]:
+    """Use optional debutant/experience fields only when real historical values exist."""
+
+    selected = list(BASE_EXPECTED_IMPACT_FEATURES)
+    for feature in OPTIONAL_EXPERIENCE_FEATURES:
+        if feature in training_data.columns and training_data[feature].notna().any():
+            selected.append(feature)
+    return selected
+
+
+def prepare_expected_impact_features(
+    df: pd.DataFrame,
+    feature_columns: list[str] | None = None,
+) -> pd.DataFrame:
     """Map current or historical data into the model feature schema."""
 
+    feature_columns = feature_columns or BASE_EXPECTED_IMPACT_FEATURES
     mapped = pd.DataFrame(index=df.index)
-    mapped["age"] = _coalesce_feature(df, "age", [], 26)
+    mapped["age"] = _coalesce_feature(df, "age", [])
     mapped["position"] = _coalesce_feature(df, "position", [], "Unknown").fillna("Unknown").astype(str)
     mapped["market_value_before_tournament"] = _coalesce_feature(
         df,
         "market_value_before_tournament",
         ["market_value_eur"],
-        0,
     )
-    mapped["club_level_score"] = _coalesce_feature(df, "club_level_score", [], 55)
+    mapped["club_level_score"] = _coalesce_feature(df, "club_level_score", [])
     mapped["league_strength_score"] = _coalesce_feature(
         df,
         "league_strength_score",
         ["club_level_score"],
-        55,
     )
     mapped["club_minutes_previous_season"] = _coalesce_feature(
         df,
         "club_minutes_previous_season",
         ["minutes"],
-        0,
     )
-    mapped["goals_previous_season"] = _coalesce_feature(df, "goals_previous_season", ["goals"], 0)
-    mapped["assists_previous_season"] = _coalesce_feature(df, "assists_previous_season", ["assists"], 0)
-    mapped["national_team_caps"] = _coalesce_feature(df, "national_team_caps", ["caps"], 0)
+    mapped["goals_previous_season"] = _coalesce_feature(df, "goals_previous_season", ["goals"])
+    mapped["assists_previous_season"] = _coalesce_feature(df, "assists_previous_season", ["assists"])
+    mapped["national_team_caps"] = _coalesce_feature(
+        df,
+        "national_team_caps",
+        ["senior_national_team_caps", "caps"],
+    )
     mapped["expected_starter_score"] = _coalesce_feature(
         df,
         "expected_starter_score",
         ["expected_minutes_score"],
-        50,
     )
-    mapped["national_team_strength"] = _coalesce_feature(df, "national_team_strength", [], 55)
+    mapped["national_team_strength"] = _coalesce_feature(df, "national_team_strength", [])
     mapped["group_difficulty_score"] = _coalesce_feature(
         df,
         "group_difficulty_score",
         ["tournament_draw_score", "draw_context_score"],
-        55,
     )
     mapped["injury_availability_score"] = _coalesce_feature(
         df,
         "injury_availability_score",
         ["availability_score"],
-        100,
     )
-    mapped["recent_form_score"] = _coalesce_feature(df, "recent_form_score", [], 50)
-    mapped["role_fit_score"] = _coalesce_feature(df, "role_fit_score", ["best_profile_score"], 50)
+    mapped["recent_form_score"] = _coalesce_feature(df, "recent_form_score", [])
+    mapped["role_fit_score"] = _coalesce_feature(df, "role_fit_score", ["best_profile_score"])
+
+    if "is_world_cup_debutant" in feature_columns:
+        mapped["is_world_cup_debutant"] = _coalesce_boolean_feature(df, "is_world_cup_debutant")
+    if "previous_world_cup_minutes" in feature_columns:
+        mapped["previous_world_cup_minutes"] = _coalesce_feature(df, "previous_world_cup_minutes", [])
+    if "previous_world_cup_matches" in feature_columns:
+        mapped["previous_world_cup_matches"] = _coalesce_feature(df, "previous_world_cup_matches", [])
+    if "previous_world_cup_impact_score" in feature_columns:
+        mapped["previous_world_cup_impact_score"] = _coalesce_feature(df, "previous_world_cup_impact_score", [])
+    if "senior_national_team_caps" in feature_columns:
+        mapped["senior_national_team_caps"] = _coalesce_feature(
+            df,
+            "senior_national_team_caps",
+            ["national_team_caps", "caps"],
+        )
+    if "major_tournament_experience" in feature_columns:
+        mapped["major_tournament_experience"] = _coalesce_feature(df, "major_tournament_experience", [])
+    if "age_group" in feature_columns:
+        existing_age_group = df["age_group"] if "age_group" in df.columns else pd.Series(pd.NA, index=df.index)
+        mapped["age_group"] = existing_age_group.combine_first(_derive_age_group(mapped["age"])).astype(str)
+        mapped.loc[existing_age_group.isna() & _derive_age_group(mapped["age"]).isna(), "age_group"] = "Unknown"
 
     mapped["market_value_before_tournament"] = np.log1p(
-        pd.to_numeric(mapped["market_value_before_tournament"], errors="coerce").fillna(0).clip(lower=0)
+        pd.to_numeric(mapped["market_value_before_tournament"], errors="coerce").clip(lower=0)
     )
-    for feature in NUMERIC_FEATURES:
+    numeric_features = [feature for feature in feature_columns if feature not in CATEGORICAL_FEATURES]
+    for feature in numeric_features:
         mapped[feature] = pd.to_numeric(mapped[feature], errors="coerce")
-    return mapped[EXPECTED_IMPACT_FEATURES]
+    return mapped[feature_columns]
 
 
-def _build_model(model_type: str, random_state: int) -> Pipeline:
+def _build_model(model_type: str, random_state: int, feature_columns: list[str]) -> Pipeline:
+    numeric_features = [feature for feature in feature_columns if feature not in CATEGORICAL_FEATURES]
+    categorical_features = [feature for feature in feature_columns if feature in CATEGORICAL_FEATURES]
     numeric_steps = [("imputer", SimpleImputer(strategy="median"))]
     if model_type == "ridge":
         numeric_steps.append(("scaler", StandardScaler()))
     preprocessor = ColumnTransformer(
         transformers=[
-            ("numeric", Pipeline(numeric_steps), NUMERIC_FEATURES),
-            ("categorical", OneHotEncoder(handle_unknown="ignore", sparse_output=False), CATEGORICAL_FEATURES),
+            ("numeric", Pipeline(numeric_steps), numeric_features),
+            ("categorical", OneHotEncoder(handle_unknown="ignore", sparse_output=False), categorical_features),
         ]
     )
     if model_type == "ridge":
@@ -190,6 +273,7 @@ def _empty_training_result(model_type: str = "gradient_boosting") -> dict[str, o
         "warning": FALLBACK_WARNING,
         "training_row_count": 0,
         "data_source_path": str(HISTORICAL_TRAINING_PATH),
+        "model_features": BASE_EXPECTED_IMPACT_FEATURES,
         "metrics": pd.DataFrame(columns=["model", "mae", "rmse", "r2"]),
         "feature_importance": pd.DataFrame(columns=["feature", "importance"]),
     }
@@ -231,7 +315,8 @@ def train_expected_impact_model(
         result["training_row_count"] = int(len(training_data))
         return result
 
-    X = prepare_expected_impact_features(training_data)
+    feature_columns = select_expected_impact_features(training_data)
+    X = prepare_expected_impact_features(training_data, feature_columns)
     X_train, X_test, y_train, y_test = train_test_split(
         X,
         y,
@@ -243,7 +328,7 @@ def train_expected_impact_model(
     trained_models: dict[str, Pipeline] = {}
     metrics = []
     for name in model_names:
-        candidate = _build_model(name, random_state)
+        candidate = _build_model(name, random_state, feature_columns)
         candidate.fit(X_train, y_train)
         preds = np.clip(candidate.predict(X_test), 0, 100)
         trained_models[name] = candidate
@@ -264,6 +349,7 @@ def train_expected_impact_model(
         "warning": "",
         "training_row_count": int(len(training_data)),
         "data_source_path": str(HISTORICAL_TRAINING_PATH),
+        "model_features": feature_columns,
         "metrics": metrics_df,
         "feature_importance": get_feature_importance(selected_model, selected_name),
     }
@@ -299,7 +385,8 @@ def predict_expected_impact(df: pd.DataFrame, trained: dict[str, object]) -> pd.
     if model is None:
         return fallback.clip(0, 100).round(1)
 
-    X = prepare_expected_impact_features(df)
+    feature_columns = list(trained.get("model_features", BASE_EXPECTED_IMPACT_FEATURES))
+    X = prepare_expected_impact_features(df, feature_columns)
     return pd.Series(np.clip(model.predict(X), 0, 100), index=df.index).round(1)
 
 

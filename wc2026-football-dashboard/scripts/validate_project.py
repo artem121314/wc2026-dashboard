@@ -24,8 +24,18 @@ SCORE_COLUMNS = [
     "actual_tournament_impact_score",
     "value_efficiency_score",
     "value_opportunity_score",
+    "breakout_candidate_score",
     "availability_score",
     "risk_score",
+]
+
+OPTIONAL_EXPERIENCE_FIELDS = [
+    "is_world_cup_debutant",
+    "previous_world_cup_minutes",
+    "previous_world_cup_matches",
+    "previous_world_cup_impact_score",
+    "senior_national_team_caps",
+    "major_tournament_experience",
 ]
 
 
@@ -113,6 +123,20 @@ def validate_processed_data(rows: list[ReportRow]) -> None:
         add(rows, "FAIL", "Processed data", "Missing processed columns: " + ", ".join(missing_required))
     else:
         add(rows, "PASS", "Processed data", "Required processed dashboard columns are present.")
+
+    if "age" in df.columns:
+        if "age_group" in df.columns:
+            add(rows, "PASS", "Processed data", "age_group exists and can be used for breakout filtering.")
+        else:
+            add(rows, "WARN", "Processed data", "age_group is missing even though age exists. Run Refresh data to derive it.")
+    else:
+        add(rows, "WARN", "Processed data", "age is missing, so age_group cannot be derived.")
+
+    for col in OPTIONAL_EXPERIENCE_FIELDS:
+        if col in df.columns and df[col].notna().any():
+            add(rows, "PASS", "Optional experience", f"{col} is available.")
+        else:
+            add(rows, "WARN", "Optional experience", f"{col} is not provided; dependent filters remain disabled.")
 
     for col in SCORE_COLUMNS:
         if col not in df.columns:

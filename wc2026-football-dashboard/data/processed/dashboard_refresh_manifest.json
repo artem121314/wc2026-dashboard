@@ -1,9 +1,12 @@
 {
-  "last_refresh_utc": "2026-06-02T13:52:45.306836+00:00",
+  "last_refresh_utc": "2026-06-02T14:13:05.727174+00:00",
   "processed_path": "/Users/artyomshpet/Documents/New project/wc2026-football-dashboard/data/processed/player_dashboard_data.csv",
   "rows": 1247,
   "missing_market_values": 0,
   "expected_impact_available": 1247,
+  "breakout_candidate_score_available": 1010,
+  "world_cup_debutant_values_available": 0,
+  "previous_world_cup_minutes_available": 0,
   "actual_tournament_impact_available": 0,
   "refresh_source": "raw files",
   "data_status": {

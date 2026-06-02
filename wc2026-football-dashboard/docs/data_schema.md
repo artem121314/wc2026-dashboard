@@ -20,6 +20,12 @@ Types are expected CSV types after reading with pandas.
 | `caps` | Senior national-team caps if available. | Optional | number | 24 | modelling |
 | `international_goals` | Senior international goals if available. | Optional | number | 6 | display, modelling |
 | `final_squad_selected` | Real squad-selection flag if officially known. | Optional | boolean | true | filtering, display |
+| `is_world_cup_debutant` | Whether a real source identifies the player as a World Cup debutant. Do not infer if unavailable. | Optional | boolean | true | display, filtering |
+| `previous_world_cup_minutes` | Previous World Cup minutes from real historical tournament data. | Optional | number | 0 | modelling, filtering |
+| `previous_world_cup_matches` | Previous World Cup appearances from real historical tournament data. | Optional | number | 0 | modelling |
+| `previous_world_cup_impact_score` | Prior position-adjusted World Cup impact score if real historical data exists. | Optional | number | 55.0 | modelling |
+| `senior_national_team_caps` | Senior national-team caps. Can be mapped from a real `caps` field. | Optional | number | 24 | modelling, display |
+| `major_tournament_experience` | Real count or score for senior major tournament experience if provided. | Optional | number | 3 | modelling, display |
 | `tm_player_id` | Transfermarkt player identifier if present in a compliant export. | Optional | number/string | 123456 | audit |
 | `tm_current_club_name` | Club name from the market-value source export. | Optional | string | club name | audit |
 | `tm_current_club_domestic_competition_id` | Domestic competition identifier from the source export. | Optional | string | GB1 | audit |
@@ -124,6 +130,12 @@ Types are expected CSV types after reading with pandas.
 | `injury_source_url` | Source URL for injury status if supplied. | Optional | string | https://... | audit |
 | `caps` | Senior national-team caps if supplied here. | Optional | number | 24 | modelling |
 | `international_goals` | Senior international goals if supplied here. | Optional | number | 6 | display |
+| `is_world_cup_debutant` | Whether a real source identifies the player as a World Cup debutant. Do not infer if unavailable. | Optional | boolean | true | display, filtering |
+| `previous_world_cup_minutes` | Previous World Cup minutes from real historical tournament data. | Optional | number | 0 | modelling, filtering |
+| `previous_world_cup_matches` | Previous World Cup appearances from real historical tournament data. | Optional | number | 0 | modelling |
+| `previous_world_cup_impact_score` | Prior position-adjusted World Cup impact score if real historical data exists. | Optional | number | 55.0 | modelling |
+| `senior_national_team_caps` | Senior national-team caps. Can be mapped from a real `caps` field. | Optional | number | 24 | modelling, display |
+| `major_tournament_experience` | Real count or score for senior major tournament experience if provided. | Optional | number | 3 | modelling, display |
 | `data_source` | Human-readable source label. | Optional | string | licensed_export | audit |
 | `data_refresh_date` | Date the source export was refreshed. | Optional | date/string | 2026-06-02 | audit |
 
@@ -149,6 +161,10 @@ Types are expected CSV types after reading with pandas.
 
 ## `data/historical/world_cup_player_training_data.csv`
 
+Historical training data should use player-tournament observations. The required grain is `player_name` + `tournament_year`; each row represents one player before one World Cup and their actual impact in that same tournament. The model learns from historical player profiles and applies those patterns to 2026 players, including World Cup debutants.
+
+Previous World Cup experience fields are optional. They can improve the model if real curated data exists, but the supervised model must still work without them.
+
 | Column | Description | Required | Type | Example | Used for |
 | --- | --- | --- | --- | --- | --- |
 | `tournament_year` | Historical World Cup year. | Yes | number | 2022 | modelling |
@@ -169,6 +185,13 @@ Types are expected CSV types after reading with pandas.
 | `recent_form_score` | Pre-tournament form score scaled 0-100. | Yes | number | 70.0 | modelling |
 | `role_fit_score` | Tactical/role fit score scaled 0-100. | Yes | number | 74.0 | modelling |
 | `actual_tournament_impact_score` | Real position-adjusted historical tournament impact target scaled 0-100. | Yes | number | 68.0 | modelling target |
+| `is_world_cup_debutant` | Whether the player was a World Cup debutant for that tournament. | Optional | boolean | true | optional modelling |
+| `previous_world_cup_minutes` | Player's World Cup minutes before that tournament. | Optional | number | 0 | optional modelling |
+| `previous_world_cup_matches` | Player's World Cup matches before that tournament. | Optional | number | 0 | optional modelling |
+| `previous_world_cup_impact_score` | Player's previous World Cup impact score before that tournament. | Optional | number | 55.0 | optional modelling |
+| `senior_national_team_caps` | Senior national-team caps before that tournament if available separately from `national_team_caps`. | Optional | number | 34 | optional modelling |
+| `major_tournament_experience` | Real count or score for major tournament experience before that tournament. | Optional | number | 4 | optional modelling |
+| `age_group` | Age group before the tournament. Can be derived from real `age`. | Optional | string | U23 | optional modelling |
 
 ## `data/processed/player_dashboard_data.csv`
 
@@ -181,6 +204,7 @@ The processed file is generated by the refresh pipeline and may include passthro
 | `club` | Club. | Yes | string | club name | display, filtering |
 | `league` | League. | Yes | string | league name | display, filtering |
 | `age` | Age. | Yes | number | 23 | filtering, ranking |
+| `age_group` | Deterministic age bucket derived from real `age`: U21, U23, U25, Prime or Veteran. | Optional | string | U23 | filtering, breakout analysis |
 | `position` | Normalised position. | Yes | string | Winger | filtering, profiles |
 | `best_profile` | Best matching player profile. | Yes | string | High-volume winger | filtering, display |
 | `best_profile_score` | Best profile score scaled 0-100. | Yes | number | 72.0 | profiles, ranking |
@@ -197,6 +221,14 @@ The processed file is generated by the refresh pipeline and may include passthro
 | `expected_impact_source` | Source of the expected-impact score. | Yes | string | transparent_baseline_fallback | audit, display |
 | `value_efficiency_score` | Expected impact relative to market value. | Optional | number | 75.0 | value ranking |
 | `value_opportunity_score` | Recruitment business ranking score. | Yes | number | 74.0 | shortlist ranking |
+| `breakout_candidate_score` | Young-player breakout ranking score based on expected impact, value efficiency, age resale, role fit and minutes confidence. | Optional | number | 72.0 | breakout analysis |
+| `breakout_candidate_flag` | True when a player is 23 or younger, has value opportunity at or above the configured threshold, and has a breakout score. | Optional | boolean | true | filtering |
+| `is_world_cup_debutant` | Real debutant status when provided. Missing values are displayed as Not provided. | Optional | boolean | true | filtering, display |
+| `previous_world_cup_minutes` | Previous World Cup minutes when provided by real historical data. | Optional | number | 0 | filtering, display |
+| `previous_world_cup_matches` | Previous World Cup matches when provided by real historical data. | Optional | number | 0 | modelling, display |
+| `previous_world_cup_impact_score` | Previous World Cup impact score when real data exists. | Optional | number | 55.0 | modelling, display |
+| `senior_national_team_caps` | Senior national-team caps, mapped from real caps where available. | Optional | number | 24 | modelling, display |
+| `major_tournament_experience` | Real major tournament experience count or score if supplied. | Optional | number | 3 | modelling, display |
 | `recommendation` | Shortlist recommendation category. | Yes | string | Watchlist | shortlist |
 | `recommendation_reason` | Explanation for recommendation. | Yes | string | reason text | display |
 | `risk_band` | Risk category. | Yes | string | Medium | filtering, display |

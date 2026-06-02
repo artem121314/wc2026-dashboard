@@ -267,6 +267,58 @@ def create_age_vs_value_opportunity_chart(df: pd.DataFrame) -> go.Figure:
     return fig
 
 
+def create_breakout_candidates_chart(df: pd.DataFrame) -> go.Figure:
+    """Show young breakout candidates by age and expected World Cup impact."""
+
+    required = ["age", "pre_tournament_expected_impact_score"]
+    if any(col not in df.columns for col in required):
+        return _empty_message("Age or expected-impact data is unavailable.")
+    chart_df = df[df["age"].notna() & df["pre_tournament_expected_impact_score"].notna()].copy()
+    if chart_df.empty:
+        return _empty_message("Age or expected-impact data is unavailable.")
+
+    color_col = (
+        "value_opportunity_score"
+        if "value_opportunity_score" in chart_df.columns and chart_df["value_opportunity_score"].notna().any()
+        else "recommendation"
+    )
+    if "market_value_eur" in chart_df.columns and chart_df["market_value_eur"].notna().any():
+        size_col = "market_value_eur"
+    elif "recent_senior_minutes" in chart_df.columns and chart_df["recent_senior_minutes"].notna().any():
+        size_col = "recent_senior_minutes"
+    else:
+        size_col = None
+
+    fig = px.scatter(
+        chart_df,
+        x="age",
+        y="pre_tournament_expected_impact_score",
+        color=color_col,
+        size=size_col,
+        hover_name="player_name",
+        hover_data=_available_columns(
+            chart_df,
+            [
+                "country",
+                "club",
+                "position",
+                "best_profile",
+                "breakout_candidate_score",
+                "is_world_cup_debutant",
+                "previous_world_cup_minutes",
+            ],
+        ),
+        labels={
+            "age": "Age",
+            "pre_tournament_expected_impact_score": "Expected WC impact",
+            "value_opportunity_score": "Value opportunity score",
+        },
+        size_max=28,
+    )
+    fig.update_layout(height=480, margin=dict(l=10, r=20, t=20, b=20))
+    return fig
+
+
 def create_predicted_vs_actual_impact_chart(df: pd.DataFrame) -> go.Figure:
     """Compare pre-tournament expected impact with actual tournament impact."""
 

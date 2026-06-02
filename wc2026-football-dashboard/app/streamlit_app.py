@@ -20,6 +20,7 @@ from player_profiles import PLAYER_PROFILES, PROFILE_ELIGIBILITY, get_eligible_p
 from utils import format_currency, scouting_summary
 from visualisations import (
     create_age_vs_value_opportunity_chart,
+    create_breakout_candidates_chart,
     create_expected_impact_vs_value_efficiency_chart,
     create_market_value_vs_value_opportunity_chart,
     create_performance_delta_distribution_chart,
@@ -141,6 +142,39 @@ def available_profiles_for_positions(positions: list[str]) -> list[str]:
     )
 
 
+def optional_has_data(df: pd.DataFrame, column: str) -> bool:
+    return column in df.columns and df[column].notna().any()
+
+
+def truthy_series(series: pd.Series) -> pd.Series:
+    return series.map(lambda value: str(value).strip().lower() in {"true", "1", "yes"})
+
+
+def format_not_provided(value: object) -> str:
+    return "Not provided" if pd.isna(value) or value == "" else str(value)
+
+
+def format_optional_bool(value: object) -> str:
+    if pd.isna(value):
+        return "Not provided"
+    parsed = str(value).strip().lower()
+    if parsed in {"true", "1", "yes"}:
+        return "Yes"
+    if parsed in {"false", "0", "no"}:
+        return "No"
+    return str(value)
+
+
+def format_optional_table_columns(table: pd.DataFrame) -> pd.DataFrame:
+    table = table.copy()
+    if "World Cup debutant" in table.columns:
+        table["World Cup debutant"] = table["World Cup debutant"].map(format_optional_bool)
+    for col in ["Previous WC minutes", "Senior NT caps", "Major tournament experience", "Age group"]:
+        if col in table.columns:
+            table[col] = table[col].map(format_not_provided)
+    return table
+
+
 def apply_sidebar_filters(df: pd.DataFrame) -> pd.DataFrame:
     st.sidebar.header("Filters")
     all_positions = sorted(df["position"].dropna().unique())
@@ -154,6 +188,55 @@ def apply_sidebar_filters(df: pd.DataFrame) -> pd.DataFrame:
     selected_recommendations = st.sidebar.multiselect("Recommendation", sorted(df["recommendation"].dropna().unique()))
     selected_risk = st.sidebar.multiselect("Risk band", sorted(df["risk_band"].dropna().unique()))
     selected_outcomes = st.sidebar.multiselect("Performance outcome", sorted(df["performance_outcome"].dropna().unique()))
+
+    if optional_has_data(df, "age_group"):
+        age_group_options = [group for group in ["U21", "U23", "U25", "Prime", "Veteran"] if group in set(df["age_group"].dropna())]
+        selected_age_groups = st.sidebar.multiselect("Age group", age_group_options, default=age_group_options)
+    else:
+        selected_age_groups = []
+        st.sidebar.caption("Age-group filtering is unavailable until age values are present.")
+
+    breakout_values = (
+        pd.to_numeric(df["breakout_candidate_score"], errors="coerce").dropna()
+        if "breakout_candidate_score" in df.columns
+        else pd.Series(dtype=float)
+    )
+    breakout_range: tuple[float, float] | None = None
+    if not breakout_values.empty:
+        breakout_range = st.sidebar.slider(
+            "Breakout candidate score range",
+            0.0,
+            100.0,
+            (float(breakout_values.min()), float(breakout_values.max())),
+            step=1.0,
+        )
+    else:
+        st.sidebar.caption("Breakout score filtering is unavailable until the required real-derived scores exist.")
+
+    show_breakout_only = False
+    if "breakout_candidate_flag" in df.columns and truthy_series(df["breakout_candidate_flag"]).any():
+        show_breakout_only = st.sidebar.checkbox("Show only breakout candidates")
+
+    debutant_available = optional_has_data(df, "is_world_cup_debutant")
+    show_debutants_only = False
+    if debutant_available:
+        show_debutants_only = st.sidebar.checkbox("Show only World Cup debutants")
+    else:
+        st.sidebar.caption("World Cup debutant filtering is disabled until debutant data is provided.")
+
+    previous_minutes_values = (
+        pd.to_numeric(df["previous_world_cup_minutes"], errors="coerce").dropna()
+        if "previous_world_cup_minutes" in df.columns
+        else pd.Series(dtype=float)
+    )
+    max_previous_wc_minutes: float | None = None
+    if not previous_minutes_values.empty:
+        max_previous_wc_minutes = st.sidebar.number_input(
+            "Max previous World Cup minutes",
+            min_value=0.0,
+            value=float(previous_minutes_values.max()),
+            step=90.0,
+        )
 
     minutes_min = int(pd.to_numeric(df["recent_senior_minutes"], errors="coerce").fillna(0).min())
     minutes_max = int(pd.to_numeric(df["recent_senior_minutes"], errors="coerce").fillna(0).max())
@@ -182,6 +265,16 @@ def apply_sidebar_filters(df: pd.DataFrame) -> pd.DataFrame:
         filtered = filtered[filtered["risk_band"].isin(selected_risk)]
     if selected_outcomes:
         filtered = filtered[filtered["performance_outcome"].isin(selected_outcomes)]
+    if selected_age_groups:
+        filtered = filtered[filtered["age_group"].isin(selected_age_groups)]
+    if breakout_range is not None:
+        filtered = filtered[pd.to_numeric(filtered["breakout_candidate_score"], errors="coerce").between(*breakout_range)]
+    if show_breakout_only:
+        filtered = filtered[truthy_series(filtered["breakout_candidate_flag"])]
+    if show_debutants_only:
+        filtered = filtered[truthy_series(filtered["is_world_cup_debutant"])]
+    if max_previous_wc_minutes is not None:
+        filtered = filtered[pd.to_numeric(filtered["previous_world_cup_minutes"], errors="coerce") <= max_previous_wc_minutes]
     filtered = filtered[filtered["recent_senior_minutes"].between(*minutes_range)]
     return filtered
 
@@ -231,6 +324,13 @@ def render_data_status_panel(model_summary: dict[str, object], df: pd.DataFrame 
         if "market_value_eur" in df.columns
         else manifest.get("missing_market_values", "unknown")
     )
+    breakout_count = (
+        int(df["breakout_candidate_score"].notna().sum())
+        if "breakout_candidate_score" in df.columns
+        else 0
+    )
+    debutant_status = "available" if optional_has_data(df, "is_world_cup_debutant") else "not provided"
+    previous_wc_status = "available" if optional_has_data(df, "previous_world_cup_minutes") else "not provided"
     refresh_source = str(manifest.get("refresh_source", "raw files" if status["current_player_pool"].get("available") else "processed fallback"))
     pipeline_rows = [
         ("Last refresh timestamp", last_refresh),
@@ -238,6 +338,9 @@ def render_data_status_panel(model_summary: dict[str, object], df: pd.DataFrame 
         ("Players loaded", f"{len(df):,}" if not df.empty else f"{int(manifest.get('rows', 0) or 0):,}"),
         ("Missing market values", missing_market_values),
         ("Expected impact available", f"{expected_count:,}"),
+        ("Breakout score available", f"{breakout_count:,}"),
+        ("World Cup debutant data", debutant_status),
+        ("Previous WC minutes data", previous_wc_status),
         ("Actual tournament impact available", f"{actual_count:,}"),
     ]
     st.markdown("#### Pipeline status")
@@ -267,6 +370,7 @@ def shortlist_table(df: pd.DataFrame) -> None:
         "club",
         "league",
         "age",
+        "age_group",
         "position",
         "best_profile",
         "market_value_eur",
@@ -275,6 +379,9 @@ def shortlist_table(df: pd.DataFrame) -> None:
         "expected_impact_source",
         "value_efficiency_score",
         "value_opportunity_score",
+        "breakout_candidate_score",
+        "is_world_cup_debutant",
+        "previous_world_cup_minutes",
         "recommendation",
         "recommendation_reason",
         "risk_band",
@@ -290,6 +397,7 @@ def shortlist_table(df: pd.DataFrame) -> None:
             "club": "Club",
             "league": "League",
             "age": "Age",
+            "age_group": "Age group",
             "position": "Position",
             "best_profile": "Profile",
             "market_value_eur": "Market value",
@@ -298,6 +406,9 @@ def shortlist_table(df: pd.DataFrame) -> None:
             "expected_impact_source": "Expected impact source",
             "value_efficiency_score": "Value efficiency",
             "value_opportunity_score": "Value opportunity score",
+            "breakout_candidate_score": "Breakout candidate score",
+            "is_world_cup_debutant": "World Cup debutant",
+            "previous_world_cup_minutes": "Previous WC minutes",
             "recommendation": "Recommendation",
             "recommendation_reason": "Recommendation reason",
             "risk_band": "Risk band",
@@ -307,6 +418,7 @@ def shortlist_table(df: pd.DataFrame) -> None:
             "performance_outcome": "Outcome",
         }
     )
+    table = format_optional_table_columns(table)
     st.dataframe(
         table,
         width="stretch",
@@ -315,6 +427,7 @@ def shortlist_table(df: pd.DataFrame) -> None:
             "Market value": st.column_config.NumberColumn(format="EUR %.0f"),
             "Expected WC Impact": st.column_config.NumberColumn(format="%.1f"),
             "Value opportunity score": st.column_config.NumberColumn(format="%.1f"),
+            "Breakout candidate score": st.column_config.NumberColumn(format="%.1f"),
         },
     )
 
@@ -366,6 +479,156 @@ def recruitment_shortlist_page(df: pd.DataFrame) -> None:
         shortlist = shortlist[shortlist["recommendation"].isin(rec_filter)]
     shortlist = shortlist.sort_values("value_opportunity_score", ascending=False)
     shortlist_table(shortlist)
+
+
+def breakout_candidates_page(df: pd.DataFrame) -> None:
+    st.subheader("Breakout Candidates")
+    st.write(
+        "Identify young value-opportunity players who may use the World Cup as a breakout platform. "
+        "Debutant status and previous World Cup experience are optional context fields; missing values are not inferred."
+    )
+
+    df = df.copy()
+    for col in [
+        "breakout_candidate_score",
+        "value_opportunity_score",
+        "pre_tournament_expected_impact_score",
+        "age_group",
+        "is_world_cup_debutant",
+        "previous_world_cup_minutes",
+    ]:
+        if col not in df.columns:
+            df[col] = pd.NA
+
+    debutant_available = optional_has_data(df, "is_world_cup_debutant")
+    previous_minutes_available = optional_has_data(df, "previous_world_cup_minutes")
+    if not debutant_available or not previous_minutes_available:
+        st.warning(
+            "Debutant-specific filters are disabled until real debutant or previous World Cup experience fields are provided."
+        )
+
+    first = st.columns(5)
+    max_age = first[0].number_input("Max age", min_value=16, max_value=45, value=23, key="breakout_max_age")
+    max_value_m = first[1].number_input(
+        "Max market value EUR m",
+        min_value=0.0,
+        value=30.0,
+        step=1.0,
+        key="breakout_max_value",
+    )
+    min_impact = first[2].number_input("Min expected impact", 0.0, 100.0, 0.0, key="breakout_min_impact")
+    min_opportunity = first[3].number_input("Min value opportunity", 0.0, 100.0, 0.0, key="breakout_min_opp")
+    min_breakout = first[4].number_input("Min breakout score", 0.0, 100.0, 0.0, key="breakout_min_score")
+
+    second = st.columns(5)
+    positions = sorted(df["position"].dropna().unique())
+    selected_positions = second[0].multiselect("Position", positions, default=positions, key="breakout_positions")
+    profile_options = available_profiles_for_positions(selected_positions)
+    selected_profiles = second[1].multiselect("Profile", profile_options, default=profile_options, key="breakout_profiles")
+    age_group_options = (
+        [group for group in ["U21", "U23", "U25", "Prime", "Veteran"] if group in set(df["age_group"].dropna())]
+        if "age_group" in df.columns
+        else []
+    )
+    selected_age_groups = second[2].multiselect(
+        "Age group",
+        age_group_options,
+        default=age_group_options,
+        key="breakout_age_groups",
+    )
+    show_debutants_only = (
+        second[3].checkbox("Only WC debutants", key="breakout_debutants")
+        if debutant_available
+        else False
+    )
+    max_previous_minutes = (
+        second[4].number_input(
+            "Max previous WC minutes",
+            min_value=0.0,
+            value=float(pd.to_numeric(df["previous_world_cup_minutes"], errors="coerce").max()),
+            step=90.0,
+            key="breakout_previous_minutes",
+        )
+        if previous_minutes_available
+        else None
+    )
+
+    breakout = df.copy()
+    breakout = breakout[pd.to_numeric(breakout["age"], errors="coerce") <= max_age]
+    if "market_value_eur" in breakout.columns:
+        breakout = breakout[pd.to_numeric(breakout["market_value_eur"], errors="coerce") <= max_value_m * 1_000_000]
+    breakout = breakout[pd.to_numeric(breakout["pre_tournament_expected_impact_score"], errors="coerce").fillna(-1) >= min_impact]
+    breakout = breakout[pd.to_numeric(breakout["value_opportunity_score"], errors="coerce").fillna(-1) >= min_opportunity]
+    breakout = breakout[pd.to_numeric(breakout["breakout_candidate_score"], errors="coerce").fillna(-1) >= min_breakout]
+    if selected_positions:
+        breakout = breakout[breakout["position"].isin(selected_positions)]
+    if selected_profiles:
+        breakout = breakout[breakout["best_profile"].isin(selected_profiles)]
+    if selected_age_groups:
+        breakout = breakout[breakout["age_group"].isin(selected_age_groups)]
+    if show_debutants_only:
+        breakout = breakout[truthy_series(breakout["is_world_cup_debutant"])]
+    if max_previous_minutes is not None:
+        breakout = breakout[pd.to_numeric(breakout["previous_world_cup_minutes"], errors="coerce") <= max_previous_minutes]
+
+    breakout = breakout.sort_values("breakout_candidate_score", ascending=False, na_position="last")
+    st.markdown("#### Breakout candidates: age vs expected impact")
+    st.plotly_chart(create_breakout_candidates_chart(breakout), width="stretch")
+
+    cols = [
+        "player_name",
+        "country",
+        "club",
+        "league",
+        "age",
+        "age_group",
+        "position",
+        "best_profile",
+        "market_value_eur",
+        "pre_tournament_expected_impact_score",
+        "value_opportunity_score",
+        "breakout_candidate_score",
+        "is_world_cup_debutant",
+        "previous_world_cup_minutes",
+        "senior_national_team_caps",
+        "major_tournament_experience",
+        "recommendation",
+        "risk_band",
+    ]
+    table = breakout[[col for col in cols if col in breakout.columns]].rename(
+        columns={
+            "player_name": "Player",
+            "country": "Country",
+            "club": "Club",
+            "league": "League",
+            "age": "Age",
+            "age_group": "Age group",
+            "position": "Position",
+            "best_profile": "Profile",
+            "market_value_eur": "Market value",
+            "pre_tournament_expected_impact_score": "Expected WC Impact",
+            "value_opportunity_score": "Value opportunity score",
+            "breakout_candidate_score": "Breakout candidate score",
+            "is_world_cup_debutant": "World Cup debutant",
+            "previous_world_cup_minutes": "Previous WC minutes",
+            "senior_national_team_caps": "Senior NT caps",
+            "major_tournament_experience": "Major tournament experience",
+            "recommendation": "Recommendation",
+            "risk_band": "Risk band",
+        }
+    )
+    table = format_optional_table_columns(table)
+    st.dataframe(
+        table,
+        hide_index=True,
+        width="stretch",
+        column_config={
+            "Market value": st.column_config.NumberColumn(format="EUR %.0f"),
+            "Expected WC Impact": st.column_config.NumberColumn(format="%.1f"),
+            "Value opportunity score": st.column_config.NumberColumn(format="%.1f"),
+            "Breakout candidate score": st.column_config.NumberColumn(format="%.1f"),
+        },
+    )
 
 
 def charts_page(filtered_df: pd.DataFrame) -> None:
@@ -443,6 +706,10 @@ def model_page(model_summary: dict[str, object]) -> None:
         st.warning(model_summary.get("warning", FALLBACK_WARNING))
         st.write(f"Model status: `{model_summary.get('model_status')}`")
         st.write(f"Expected historical path: `{model_summary.get('data_source_path')}`")
+    features = model_summary.get("model_features")
+    if isinstance(features, list) and features:
+        st.markdown("#### Current supervised feature plan")
+        st.write(", ".join(str(feature) for feature in features))
 
 
 def methodology_page() -> None:
@@ -452,6 +719,10 @@ def methodology_page() -> None:
 The dashboard uses real data only. No synthetic data is used. If real historical or tournament data is missing, the relevant model or validation section is disabled or marked as pending.
 
 The supervised expected-impact model trains only from `data/historical/world_cup_player_training_data.csv` when real curated historical rows are available. If that file is missing, empty or invalid, `pre_tournament_expected_impact_score` falls back to `baseline_expected_impact_score` only when the required current-player features exist.
+
+The expected-impact model is designed to handle World Cup debutants. It does not require a player to have appeared at previous World Cups. Previous World Cup experience is included only as an optional signal. For young players, the model relies more on club performance, expected national-team role, recent minutes, age/upside, market value and team context.
+
+The model is trained on player-tournament observations, not on repeated appearances by the same players. This allows the model to generalise from historical player profiles to new 2026 players.
 
 `value_opportunity_score` is a recruitment business metric. It combines expected impact, value efficiency, age resale, role fit, availability and playing-time confidence. Strategy presets and custom weights change this ranking without changing the expected-impact model.
 
@@ -484,6 +755,7 @@ def main() -> None:
         [
             "Overview",
             "Recruitment Shortlist",
+            "Breakout Candidates",
             "Charts",
             "Player Profile",
             "Profile Rankings",
@@ -496,14 +768,16 @@ def main() -> None:
     with tabs[1]:
         recruitment_shortlist_page(filtered_df)
     with tabs[2]:
-        charts_page(filtered_df)
+        breakout_candidates_page(filtered_df)
     with tabs[3]:
-        player_profile_page(filtered_df)
+        charts_page(filtered_df)
     with tabs[4]:
-        profile_rankings_page(filtered_df)
+        player_profile_page(filtered_df)
     with tabs[5]:
-        model_page(model_summary)
+        profile_rankings_page(filtered_df)
     with tabs[6]:
+        model_page(model_summary)
+    with tabs[7]:
         methodology_page()
 
 

@@ -88,6 +88,14 @@ BASELINE_REQUIRED_COMPONENTS = [
     "age_upside_score",
 ]
 
+BREAKOUT_SCORE_COMPONENTS = {
+    "pre_tournament_expected_impact_score": 0.35,
+    "value_efficiency_score": 0.25,
+    "age_resale_score": 0.20,
+    "role_fit_score": 0.10,
+    "playing_time_confidence_score": 0.10,
+}
+
 
 def clip_score(values: pd.Series | np.ndarray | float) -> pd.Series | np.ndarray | float:
     """Keep score-like values inside a 0-100 range."""
@@ -343,6 +351,21 @@ def calculate_age_curve_score(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
+def calculate_age_group(df: pd.DataFrame) -> pd.DataFrame:
+    """Create deterministic age groups from real age values."""
+
+    df = df.copy()
+    age = pd.to_numeric(df["age"], errors="coerce") if "age" in df.columns else pd.Series(pd.NA, index=df.index)
+    existing = df["age_group"].copy() if "age_group" in df.columns else pd.Series(pd.NA, index=df.index, dtype="object")
+    df["age_group"] = existing.astype("object")
+    df.loc[age <= 21, "age_group"] = "U21"
+    df.loc[age.between(22, 23), "age_group"] = "U23"
+    df.loc[age.between(24, 25), "age_group"] = "U25"
+    df.loc[age.between(26, 29), "age_group"] = "Prime"
+    df.loc[age >= 30, "age_group"] = "Veteran"
+    return df
+
+
 def calculate_expected_impact_scores(df: pd.DataFrame) -> pd.DataFrame:
     """Calculate transparent baseline expected-impact components."""
 
@@ -452,7 +475,33 @@ def calculate_value_opportunity_score(
         has_all_inputs = has_all_inputs & values.notna()
         score = score + values.fillna(0) * weight
     df["value_opportunity_score"] = pd.Series(clip_score(score), index=df.index).where(has_all_inputs).round(1)
+    df = calculate_breakout_candidate_score(df)
     df = add_recommendation_and_risk_fields(df)
+    return df
+
+
+def calculate_breakout_candidate_score(df: pd.DataFrame) -> pd.DataFrame:
+    """Score young value-opportunity breakout candidates from available real-derived fields."""
+
+    df = df.copy()
+    score = pd.Series(0.0, index=df.index)
+    has_all_inputs = pd.Series(True, index=df.index)
+    for col, weight in BREAKOUT_SCORE_COMPONENTS.items():
+        values = pd.to_numeric(df[col], errors="coerce") if col in df.columns else pd.Series(pd.NA, index=df.index)
+        has_all_inputs = has_all_inputs & values.notna()
+        score = score + values.fillna(0) * weight
+
+    df["breakout_candidate_score"] = pd.Series(clip_score(score), index=df.index).where(has_all_inputs).round(1)
+    age = pd.to_numeric(df["age"], errors="coerce") if "age" in df.columns else pd.Series(pd.NA, index=df.index)
+    opportunity = (
+        pd.to_numeric(df["value_opportunity_score"], errors="coerce")
+        if "value_opportunity_score" in df.columns
+        else pd.Series(pd.NA, index=df.index)
+    )
+    flag_available = age.notna() & opportunity.notna() & df["breakout_candidate_score"].notna()
+    flag = pd.Series(pd.NA, index=df.index, dtype="boolean")
+    flag.loc[flag_available] = (age.loc[flag_available] <= 23) & (opportunity.loc[flag_available] >= 60)
+    df["breakout_candidate_flag"] = flag
     return df
 
 
@@ -532,4 +581,5 @@ def calculate_all_features(df: pd.DataFrame) -> pd.DataFrame:
     df = calculate_possession_score(df)
     df = calculate_overall_score(df)
     df = calculate_age_curve_score(df)
+    df = calculate_age_group(df)
     return df
