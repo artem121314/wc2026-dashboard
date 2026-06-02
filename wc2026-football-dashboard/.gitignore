@@ -16,4 +16,4 @@ outputs/reports/*
 !outputs/reports/.gitkeep
 data/raw/*
 !data/raw/.gitkeep
-
+!data/raw/injury_status.csv

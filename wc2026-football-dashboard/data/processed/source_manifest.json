@@ -1,0 +1,17 @@
+{
+  "refresh_date": "2026-06-02",
+  "rows": 1247,
+  "countries": 48,
+  "sources": {
+    "squads": "https://en.wikipedia.org/wiki/2026_FIFA_World_Cup_squads",
+    "transfermarkt_dataset": "https://github.com/dcaribou/transfermarkt-datasets",
+    "market_injury_backfill_dataset": "https://github.com/salimt/football-datasets",
+    "transfermarkt_csv_base": "https://pub-e682421888d945d684bcae8890b0ec20.r2.dev/data",
+    "draw": "https://raw.githubusercontent.com/openfootball/worldcup.json/master/2026/worldcup.json",
+    "injury_status_csv": "data/raw/injury_status.csv"
+  },
+  "transfermarkt_match_rate": 0.9526864474739375,
+  "live_target_rows": 0,
+  "market_value_coverage_rate": 0.809943865276664,
+  "active_injury_rows": 49
+}

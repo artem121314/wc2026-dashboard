@@ -2,7 +2,7 @@
 
 An interactive football analytics dashboard built as a portfolio project for recruitment, scouting, and performance analysis ahead of the 2026 FIFA World Cup.
 
-The app helps analysts explore player profiles, filter a scouting pool, compare football-specific metrics, and estimate whether a player is likely to have a strong World Cup performance. The first version ships with a clean synthetic sample dataset so the full workflow runs immediately and can later be replaced with real player data.
+The app helps analysts explore the 2026 World Cup player pool, filter by squad context and market information, compare role-specific metrics, and estimate whether a player is likely to have a strong World Cup performance. The default processed dataset is built from real public squad, market, ranking, draw and appearance sources.
 
 ## Why This Project Exists
 
@@ -20,35 +20,40 @@ Screenshots can be added here after running the Streamlit app locally.
 
 ## Key Features
 
-- Explore a sample pool of 260 World Cup-relevant player profiles.
-- Filter players by position, profile, country, club, league, age, market value, minutes, and predicted success probability.
+- Explore the 2026 World Cup final-squad player pool.
+- Filter players by position, profile, country, group, club, league, age, market value, minutes, injury status, and predicted success probability.
 - Compare players using percentile-adjusted football metrics.
 - Rank players by role-specific profiles such as chance creator, modern full-back, high-pressing forward, and goalkeeper distributor.
-- Estimate World Cup success probability using a transparent scouting-support heuristic.
+- Estimate World Cup success probability using real final-squad selection, current market value, FIFA ranking context, tactical fit, injury availability, draw difficulty and recent player output.
 - View prediction explanations with positive factors, negative factors, similar players, and confidence level.
 - Generate short scouting-style player summaries.
+- Refresh the dataset as the tournament begins so live World Cup appearances can become the model target.
 
 ## Data Sources
 
-The MVP uses a reproducible synthetic dataset stored in:
+The default processed dataset is stored in:
 
 ```text
-data/sample/wc2026_sample_players.csv
+data/processed/player_features.csv
 ```
 
-The project is designed so this file can be replaced with real data later. The expected columns include player identity fields, market value, playing time, event-style metrics, national-team strength, club-level score, recent form, and expected minutes.
+It is generated from:
 
-Future real-data sources could include:
+- 2026 FIFA World Cup squad tables: `https://en.wikipedia.org/wiki/2026_FIFA_World_Cup_squads`
+- Transfermarkt dataset by dcaribou: `https://github.com/dcaribou/transfermarkt-datasets`
+- Transfermarkt CSV data host: `https://pub-e682421888d945d684bcae8890b0ec20.r2.dev/data`
+- openfootball 2026 World Cup schedule: `https://github.com/openfootball/worldcup.json`
+- Optional real injury feed: `data/raw/injury_status.csv`
 
-- StatsBomb Open Data
-- FBref / StatBomb-style standard and shooting tables
-- Transfermarkt-style market value data
-- Club or national-team scouting databases
-- Historical FIFA World Cup player and match data
+The source manifest for the last refresh is written to:
+
+```text
+data/processed/source_manifest.json
+```
 
 ## Methodology
 
-Volume metrics are converted to per-90 rates before percentile ranking. Percentiles are calculated within position groups so defenders, midfielders, forwards, and goalkeepers are compared against relevant peers.
+Recent minutes, goals, assists, international caps, market values, FIFA ranking context, final squad selection, tactical fit, injury availability, group draw and opponent strength are transformed into scouting features. Percentiles are calculated within position groups so defenders, midfielders, forwards, and goalkeepers are compared against relevant peers.
 
 The dashboard calculates:
 
@@ -60,23 +65,33 @@ The dashboard calculates:
 - `overall_score`
 - `best_profile`
 - `best_profile_score`
+- `tactical_fit_score`
+- `injury_availability_score`
+- `draw_context_score`
+- `final_squad_selection_score`
+- `market_value_score`
 - `success_score`
 - `success_probability`
 
-The first success model is intentionally transparent. Since real 2026 tournament outcomes do not exist yet, the MVP uses a heuristic score:
+The pre-tournament model is intentionally transparent:
 
 ```text
 success_score =
-0.25 * current_performance_score
-+ 0.20 * national_team_strength_score
+0.18 * current_performance_score
 + 0.15 * expected_minutes_score
-+ 0.15 * role_fit_score
-+ 0.10 * age_curve_score
-+ 0.10 * club_level_score
-+ 0.05 * recent_form_score
++ 0.14 * tactical_fit_score
++ 0.13 * role_fit_score
++ 0.12 * injury_availability_score
++ 0.10 * national_team_strength_score
++ 0.08 * draw_context_score
++ 0.05 * age_curve_score
++ 0.04 * club_level_score
++ 0.04 * recent_form_score
++ 0.03 * final_squad_selection_score
++ 0.01 * market_value_score
 ```
 
-The score is mapped to a probability-like 0-100 output for scouting triage. It is not a betting model.
+When live World Cup appearance rows are available from the Transfermarkt dataset, the model can train against an actual tournament target based on World Cup minutes and direct goal contribution. Before enough live target rows exist, the transparent pre-tournament target keeps the dashboard usable.
 
 ## Player Profiles
 
@@ -106,10 +121,16 @@ pip install -r requirements.txt
 streamlit run app/streamlit_app.py
 ```
 
-The first run loads the sample data and processed feature file. To regenerate them:
+The first run loads the processed real-data feature file. To regenerate it:
 
 ```bash
 python src/data_loader.py
+```
+
+To refresh the real World Cup dataset directly:
+
+```bash
+python src/real_data.py
 ```
 
 ## Project Structure
@@ -131,6 +152,7 @@ wc2026-football-dashboard/
 │   ├── data_loader.py
 │   ├── preprocessing.py
 │   ├── feature_engineering.py
+│   ├── real_data.py
 │   ├── player_profiles.py
 │   ├── model.py
 │   ├── visualisations.py
@@ -144,19 +166,9 @@ wc2026-football-dashboard/
 └── .gitignore
 ```
 
-## Limitations
-
-- The current dataset is synthetic and intended for MVP development.
-- The success target is heuristic rather than learned from real World Cup outcomes.
-- The model does not account for injuries, final squad selection, tactical fit, opponent strength, or tournament draw.
-- Market values and team-strength inputs are estimates for demonstration.
-
 ## Future Improvements
 
-- Replace the sample data with real player-season and event data.
 - Train against historical World Cup and continental tournament outcomes.
-- Add injury history, squad competition, and minutes projection models.
 - Add uncertainty intervals around success predictions.
 - Add downloadable scouting reports.
 - Add pitch-style visuals for ball progression, shot maps, and defensive actions.
-

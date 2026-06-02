@@ -298,11 +298,7 @@ def calculate_age_curve_score(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def calculate_success_score(df: pd.DataFrame) -> pd.DataFrame:
-    """Calculate heuristic success score and probability-like output.
-
-    This is a scouting-support heuristic for the MVP, not a betting model or
-    claim of true tournament outcome probability.
-    """
+    """Calculate pre-tournament success score and probability-like output."""
 
     df = df.copy()
     for col in [
@@ -313,20 +309,30 @@ def calculate_success_score(df: pd.DataFrame) -> pd.DataFrame:
         "age_curve_score",
         "club_level_score",
         "recent_form_score",
+        "tactical_fit_score",
+        "injury_availability_score",
+        "draw_context_score",
+        "final_squad_selection_score",
+        "market_value_score",
     ]:
         if col not in df.columns:
-            df[col] = 50
+            df[col] = 100 if col in {"injury_availability_score", "final_squad_selection_score"} else 50
 
     df["current_performance_score"] = df["overall_score"]
     df["role_fit_score"] = df["best_profile_score"]
     df["success_score"] = (
-        0.25 * df["current_performance_score"]
-        + 0.20 * df["national_team_strength"]
+        0.18 * df["current_performance_score"]
         + 0.15 * df["expected_minutes_score"]
-        + 0.15 * df["role_fit_score"]
-        + 0.10 * df["age_curve_score"]
-        + 0.10 * df["club_level_score"]
-        + 0.05 * df["recent_form_score"]
+        + 0.14 * df["tactical_fit_score"]
+        + 0.13 * df["role_fit_score"]
+        + 0.12 * df["injury_availability_score"]
+        + 0.10 * df["national_team_strength"]
+        + 0.08 * df["draw_context_score"]
+        + 0.05 * df["age_curve_score"]
+        + 0.04 * df["club_level_score"]
+        + 0.04 * df["recent_form_score"]
+        + 0.03 * df["final_squad_selection_score"]
+        + 0.01 * df["market_value_score"]
     ).round(1)
 
     probability = 100 / (1 + np.exp(-(df["success_score"] - 58) / 10))
@@ -348,4 +354,3 @@ def calculate_all_features(df: pd.DataFrame) -> pd.DataFrame:
     df = calculate_overall_score(df)
     df = calculate_age_curve_score(df)
     return df
-

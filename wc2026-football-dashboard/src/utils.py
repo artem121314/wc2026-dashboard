@@ -62,7 +62,7 @@ def get_risks(player: pd.Series, limit: int = 3) -> list[str]:
         ("role-fit certainty", float(player.get("role_fit_score", 50))),
     ]
     candidates.sort(key=lambda item: item[1])
-    return [label for label, score in candidates[:limit] if score < 62] or ["no major red flags in the sample inputs"]
+    return [label for label, score in candidates[:limit] if score < 62] or ["no major red flags in the current inputs"]
 
 
 def scouting_summary(player: pd.Series) -> str:
@@ -102,4 +102,3 @@ def similar_players(df: pd.DataFrame, player: pd.Series, n: int = 5) -> pd.DataF
     profile_penalty = (pool["best_profile"] != player["best_profile"]).astype(int) * 18
     pool["similarity_distance"] = distance + profile_penalty
     return pool.sort_values("similarity_distance").head(n)
-

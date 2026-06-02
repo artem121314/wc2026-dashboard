@@ -49,7 +49,32 @@ def clean_player_data(df: pd.DataFrame) -> pd.DataFrame:
 
     validate_columns(df)
     df = df.copy()
-    text_cols = ["player_name", "country", "club", "league", "position"]
+    text_cols = [
+        "player_name",
+        "country",
+        "club",
+        "league",
+        "position",
+        "group",
+        "group_opponents",
+        "injury_status",
+        "injury_source_url",
+        "market_value_source",
+        "latest_market_value_date",
+        "salimt_latest_market_value_date",
+        "latest_value_competition_id",
+        "tm_current_club_name",
+        "tm_current_club_domestic_competition_id",
+        "tm_sub_position",
+        "tm_foot",
+        "tm_national_team_name",
+        "tm_confederation",
+        "tm_url",
+        "tm_image_url",
+        "data_source",
+        "data_refresh_date",
+    ]
+    text_cols = [col for col in text_cols if col in df.columns]
     for col in text_cols:
         df[col] = df[col].fillna("Unknown").astype(str).str.strip()
 
@@ -83,4 +108,3 @@ def prepare_player_data(df: pd.DataFrame) -> pd.DataFrame:
     df = calculate_profile_scores(df)
     df = calculate_success_score(df)
     return df.sort_values("success_probability", ascending=False).reset_index(drop=True)
-

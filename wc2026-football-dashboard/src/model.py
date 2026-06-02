@@ -1,4 +1,4 @@
-"""Transparent success prediction utilities for the MVP."""
+"""Transparent success prediction utilities for the dashboard."""
 
 from __future__ import annotations
 
@@ -17,6 +17,11 @@ MODEL_FEATURES = [
     "national_team_strength",
     "expected_minutes_score",
     "best_profile_score",
+    "tactical_fit_score",
+    "injury_availability_score",
+    "draw_context_score",
+    "final_squad_selection_score",
+    "market_value_score",
     "age_curve_score",
     "club_level_score",
     "recent_form_score",
@@ -31,20 +36,39 @@ MODEL_FEATURES = [
 
 
 HEURISTIC_COMPONENTS = {
-    "Current performance": ("current_performance_score", 0.25),
-    "National team strength": ("national_team_strength", 0.20),
+    "Current performance": ("current_performance_score", 0.18),
     "Expected minutes": ("expected_minutes_score", 0.15),
-    "Role fit": ("role_fit_score", 0.15),
-    "Age curve": ("age_curve_score", 0.10),
-    "Club level": ("club_level_score", 0.10),
-    "Recent form": ("recent_form_score", 0.05),
+    "Tactical fit": ("tactical_fit_score", 0.14),
+    "Role fit": ("role_fit_score", 0.13),
+    "Injury availability": ("injury_availability_score", 0.12),
+    "National team strength": ("national_team_strength", 0.10),
+    "Tournament draw": ("draw_context_score", 0.08),
+    "Age curve": ("age_curve_score", 0.05),
+    "Club level": ("club_level_score", 0.04),
+    "Recent form": ("recent_form_score", 0.04),
+    "Final squad selection": ("final_squad_selection_score", 0.03),
+    "Market value": ("market_value_score", 0.01),
 }
 
 
-def create_heuristic_target(df: pd.DataFrame, threshold: float = 72) -> pd.Series:
-    """Create a synthetic label for the first model version."""
+def create_success_target(df: pd.DataFrame, threshold: float = 72) -> pd.Series:
+    """Use live tournament target when available, otherwise pre-tournament target."""
 
+    if "actual_success_target" in df.columns:
+        actual = pd.to_numeric(df["actual_success_target"], errors="coerce")
+        if actual.notna().sum() >= 30 and actual.nunique(dropna=True) > 1:
+            return actual.fillna(0).astype(int)
     return (df["success_score"] >= threshold).astype(int)
+
+
+def get_target_source(df: pd.DataFrame) -> str:
+    """Describe whether the model is using live or pre-tournament labels."""
+
+    if "actual_success_target" in df.columns:
+        actual = pd.to_numeric(df["actual_success_target"], errors="coerce")
+        if actual.notna().sum() >= 30 and actual.nunique(dropna=True) > 1:
+            return "live tournament target"
+    return "pre-tournament target"
 
 
 def train_success_model(
@@ -52,18 +76,22 @@ def train_success_model(
     model_type: str = "logistic_regression",
     random_state: int = 26,
 ) -> dict[str, object]:
-    """Train a transparent first-pass classifier against the heuristic label."""
+    """Train a transparent classifier against live or pre-tournament target."""
 
     available_features = [col for col in MODEL_FEATURES if col in df.columns]
     model_df = df[available_features].copy()
     model_df["market_value_eur"] = np.log1p(model_df["market_value_eur"])
-    y = create_heuristic_target(df)
+    y = create_success_target(df)
+    target_source = get_target_source(df)
 
     if y.nunique() < 2 or len(df) < 30:
         return {
             "model": None,
+            "model_type": model_type,
             "features": available_features,
             "auc": None,
+            "target": y,
+            "target_source": target_source,
             "feature_importance": pd.DataFrame(),
         }
 
@@ -94,8 +122,11 @@ def train_success_model(
 
     return {
         "model": model,
+        "model_type": model_type,
         "features": available_features,
         "auc": auc,
+        "target": y,
+        "target_source": target_source,
         "feature_importance": importance,
     }
 
@@ -169,4 +200,3 @@ def confidence_level(player_row: pd.Series) -> str:
     if confidence_score >= 58:
         return "Medium"
     return "Low"
-

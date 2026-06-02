@@ -1,9 +1,4 @@
-"""Data loading and synthetic sample data generation.
-
-The MVP ships with a reproducible synthetic dataset so the dashboard works
-immediately. Replace ``data/sample/wc2026_sample_players.csv`` with a real
-source later and keep the downstream feature pipeline unchanged.
-"""
+"""Data loading and synthetic fallback generation."""
 
 from __future__ import annotations
 
@@ -452,7 +447,7 @@ def _sample_metric(rate: float, minutes: int, talent: float, rng: np.random.Gene
 
 
 def generate_sample_players(n_players: int = 260, random_state: int = 26) -> pd.DataFrame:
-    """Create a realistic, reproducible player dataset for the MVP."""
+    """Create a realistic, reproducible fallback fixture."""
 
     rng = np.random.default_rng(random_state)
     player_names = _unique_player_names(n_players, rng)
@@ -573,12 +568,18 @@ def load_player_data(
     sample_path: Path | str = SAMPLE_DATA_PATH,
     processed_path: Path | str = PROCESSED_DATA_PATH,
     refresh: bool = False,
+    use_real_sources: bool = False,
 ) -> pd.DataFrame:
-    """Load processed data or build it from the sample file."""
+    """Load processed data or build it from real sources/sample fallback."""
 
     processed_path = Path(processed_path)
     if processed_path.exists() and not refresh:
         return pd.read_csv(processed_path)
+
+    if use_real_sources:
+        from real_data import save_real_player_data
+
+        return save_real_player_data()
 
     from preprocessing import prepare_player_data
 
@@ -590,8 +591,5 @@ def load_player_data(
 
 
 if __name__ == "__main__":
-    save_sample_data()
-    load_player_data(refresh=True)
-    print(f"Wrote sample data to {SAMPLE_DATA_PATH}")
-    print(f"Wrote processed data to {PROCESSED_DATA_PATH}")
-
+    load_player_data(refresh=True, use_real_sources=True)
+    print(f"Wrote real processed data to {PROCESSED_DATA_PATH}")
