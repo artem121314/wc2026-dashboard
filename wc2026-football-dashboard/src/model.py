@@ -16,13 +16,15 @@ from sklearn.model_selection import train_test_split
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import OneHotEncoder, StandardScaler
 
+from data_sources import HISTORICAL_TRAINING_PATH
 
-PROJECT_ROOT = Path(__file__).resolve().parents[1]
-HISTORICAL_TRAINING_PATH = PROJECT_ROOT / "data" / "historical" / "world_cup_player_training_data.csv"
+
 FALLBACK_WARNING = (
-    "Historical training data is not available yet. The dashboard is currently using a transparent baseline "
-    "expected-impact score."
+    "Historical World Cup training data is not available. The supervised expected-impact model is disabled until "
+    "real curated historical data is added."
 )
+MODEL_STATUS_AVAILABLE = "available"
+MODEL_STATUS_DISABLED = "disabled_missing_real_historical_data"
 
 EXPECTED_IMPACT_FEATURES = [
     "age",
@@ -40,6 +42,13 @@ EXPECTED_IMPACT_FEATURES = [
     "injury_availability_score",
     "recent_form_score",
     "role_fit_score",
+]
+
+REQUIRED_HISTORICAL_COLUMNS = [
+    "tournament_year",
+    "player_name",
+    *EXPECTED_IMPACT_FEATURES,
+    "actual_tournament_impact_score",
 ]
 
 NUMERIC_FEATURES = [feature for feature in EXPECTED_IMPACT_FEATURES if feature != "position"]
@@ -66,7 +75,7 @@ def load_historical_training_data(path: Path | str = HISTORICAL_TRAINING_PATH) -
         data = pd.read_csv(path)
     except pd.errors.EmptyDataError:
         return pd.DataFrame()
-    if data.empty or "actual_tournament_impact_score" not in data.columns:
+    if data.empty:
         return pd.DataFrame()
     return data
 
@@ -173,10 +182,14 @@ def evaluate_expected_impact_model(y_true: pd.Series, y_pred: np.ndarray | pd.Se
 def _empty_training_result(model_type: str = "gradient_boosting") -> dict[str, object]:
     return {
         "model": None,
+        "selected_model_name": None,
         "model_type": model_type,
         "model_available": False,
-        "target_source": "baseline fallback",
+        "model_status": MODEL_STATUS_DISABLED,
+        "target_source": "disabled",
         "warning": FALLBACK_WARNING,
+        "training_row_count": 0,
+        "data_source_path": str(HISTORICAL_TRAINING_PATH),
         "metrics": pd.DataFrame(columns=["model", "mae", "rmse", "r2"]),
         "feature_importance": pd.DataFrame(columns=["feature", "importance"]),
     }
@@ -193,12 +206,30 @@ def train_expected_impact_model(
     if training_data.empty:
         return _empty_training_result(model_type)
 
+    missing_columns = [col for col in REQUIRED_HISTORICAL_COLUMNS if col not in training_data.columns]
+    if missing_columns:
+        result = _empty_training_result(model_type)
+        result["model_status"] = "disabled_invalid_real_historical_data"
+        result["warning"] = (
+            "Historical World Cup training data is present but missing required columns: "
+            + ", ".join(missing_columns)
+        )
+        result["training_row_count"] = int(len(training_data))
+        return result
+
     y = pd.to_numeric(training_data["actual_tournament_impact_score"], errors="coerce")
     valid = y.notna()
     training_data = training_data.loc[valid].copy()
     y = y.loc[valid].clip(0, 100)
     if len(training_data) < 30 or y.nunique() < 2:
-        return _empty_training_result(model_type)
+        result = _empty_training_result(model_type)
+        result["model_status"] = "disabled_insufficient_real_historical_rows"
+        result["warning"] = (
+            "Historical World Cup training data is present but does not contain enough valid target rows to train "
+            "a supervised model."
+        )
+        result["training_row_count"] = int(len(training_data))
+        return result
 
     X = prepare_expected_impact_features(training_data)
     X_train, X_test, y_train, y_test = train_test_split(
@@ -219,16 +250,20 @@ def train_expected_impact_model(
         metrics.append({"model": name, **evaluate_expected_impact_model(y_test, preds)})
 
     metrics_df = pd.DataFrame(metrics).sort_values("mae", ascending=True).reset_index(drop=True)
-    selected_name = model_type if model_type in trained_models else str(metrics_df.iloc[0]["model"])
+    selected_name = str(metrics_df.iloc[0]["model"])
     selected_model = trained_models[selected_name]
 
     return {
         "model": selected_model,
         "all_models": trained_models,
+        "selected_model_name": selected_name,
         "model_type": selected_name,
         "model_available": True,
+        "model_status": MODEL_STATUS_AVAILABLE,
         "target_source": "historical World Cup actual_tournament_impact_score",
         "warning": "",
+        "training_row_count": int(len(training_data)),
+        "data_source_path": str(HISTORICAL_TRAINING_PATH),
         "metrics": metrics_df,
         "feature_importance": get_feature_importance(selected_model, selected_name),
     }
@@ -255,7 +290,11 @@ def get_feature_importance(model: Pipeline | None, model_type: str) -> pd.DataFr
 def predict_expected_impact(df: pd.DataFrame, trained: dict[str, object]) -> pd.Series:
     """Predict expected World Cup impact, falling back to the baseline score."""
 
-    fallback = pd.to_numeric(df.get("baseline_expected_impact_score"), errors="coerce").fillna(50)
+    fallback = (
+        pd.to_numeric(df["baseline_expected_impact_score"], errors="coerce")
+        if "baseline_expected_impact_score" in df.columns
+        else pd.Series(pd.NA, index=df.index)
+    )
     model = trained.get("model")
     if model is None:
         return fallback.clip(0, 100).round(1)

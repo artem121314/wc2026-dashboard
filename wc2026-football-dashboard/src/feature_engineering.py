@@ -45,27 +45,48 @@ CORE_PERCENTILE_METRICS = [
 
 VALUE_STRATEGIES = {
     "Balanced club": {
-        "pre_tournament_expected_impact_score": 0.40,
-        "value_efficiency_score": 0.25,
-        "age_resale_score": 0.15,
+        "pre_tournament_expected_impact_score": 0.35,
+        "value_efficiency_score": 0.22,
+        "age_resale_score": 0.13,
         "role_fit_score": 0.10,
         "availability_score": 0.10,
+        "playing_time_confidence_score": 0.10,
     },
     "Value-focused club": {
-        "pre_tournament_expected_impact_score": 0.25,
-        "value_efficiency_score": 0.35,
-        "age_resale_score": 0.25,
-        "role_fit_score": 0.08,
+        "pre_tournament_expected_impact_score": 0.22,
+        "value_efficiency_score": 0.34,
+        "age_resale_score": 0.22,
+        "role_fit_score": 0.07,
         "availability_score": 0.07,
+        "playing_time_confidence_score": 0.08,
     },
     "Impact-focused club": {
-        "pre_tournament_expected_impact_score": 0.55,
+        "pre_tournament_expected_impact_score": 0.48,
         "value_efficiency_score": 0.12,
         "age_resale_score": 0.08,
-        "role_fit_score": 0.17,
+        "role_fit_score": 0.14,
         "availability_score": 0.08,
+        "playing_time_confidence_score": 0.10,
+    },
+    "Development-focused club": {
+        "pre_tournament_expected_impact_score": 0.25,
+        "value_efficiency_score": 0.20,
+        "age_resale_score": 0.30,
+        "role_fit_score": 0.10,
+        "availability_score": 0.07,
+        "playing_time_confidence_score": 0.08,
     },
 }
+
+BASELINE_REQUIRED_COMPONENTS = [
+    "current_performance_score",
+    "expected_minutes_score",
+    "role_fit_score",
+    "national_team_context_score",
+    "tournament_draw_score",
+    "availability_score",
+    "age_upside_score",
+]
 
 
 def clip_score(values: pd.Series | np.ndarray | float) -> pd.Series | np.ndarray | float:
@@ -326,30 +347,17 @@ def calculate_expected_impact_scores(df: pd.DataFrame) -> pd.DataFrame:
     """Calculate transparent baseline expected-impact components."""
 
     df = df.copy()
-    for col in [
-        "overall_score",
-        "national_team_strength",
-        "expected_minutes_score",
-        "best_profile_score",
-        "age_curve_score",
-        "club_level_score",
-        "recent_form_score",
-        "tactical_fit_score",
-        "injury_availability_score",
-        "draw_context_score",
-        "final_squad_selection_score",
-        "market_value_score",
-    ]:
-        if col not in df.columns:
-            df[col] = 100 if col in {"injury_availability_score", "final_squad_selection_score"} else 50
+    df["current_performance_score"] = pd.to_numeric(df["overall_score"], errors="coerce") if "overall_score" in df.columns else pd.NA
+    df["role_fit_score"] = pd.to_numeric(df["best_profile_score"], errors="coerce") if "best_profile_score" in df.columns else pd.NA
+    df["national_team_context_score"] = pd.to_numeric(df["national_team_strength"], errors="coerce") if "national_team_strength" in df.columns else pd.NA
+    df["tournament_draw_score"] = pd.to_numeric(df["draw_context_score"], errors="coerce") if "draw_context_score" in df.columns else pd.NA
+    df["availability_score"] = pd.to_numeric(df["injury_availability_score"], errors="coerce") if "injury_availability_score" in df.columns else pd.NA
+    df["age_upside_score"] = pd.to_numeric(df["age_curve_score"], errors="coerce") if "age_curve_score" in df.columns else pd.NA
+    if "expected_minutes_score" not in df.columns:
+        df["expected_minutes_score"] = pd.NA
 
-    df["current_performance_score"] = df["overall_score"]
-    df["role_fit_score"] = df["best_profile_score"]
-    df["national_team_context_score"] = df["national_team_strength"]
-    df["tournament_draw_score"] = df["draw_context_score"]
-    df["availability_score"] = df["injury_availability_score"]
-    df["age_upside_score"] = df["age_curve_score"]
-    df["baseline_expected_impact_score"] = (
+    baseline_available = df[BASELINE_REQUIRED_COMPONENTS].notna().all(axis=1)
+    baseline = (
         0.25 * df["current_performance_score"]
         + 0.20 * df["expected_minutes_score"]
         + 0.15 * df["role_fit_score"]
@@ -357,7 +365,8 @@ def calculate_expected_impact_scores(df: pd.DataFrame) -> pd.DataFrame:
         + 0.10 * df["tournament_draw_score"]
         + 0.10 * df["availability_score"]
         + 0.05 * df["age_upside_score"]
-    ).round(1)
+    )
+    df["baseline_expected_impact_score"] = baseline.where(baseline_available).clip(0, 100).round(1)
 
     if "pre_tournament_expected_impact_score" not in df.columns:
         df["pre_tournament_expected_impact_score"] = df["baseline_expected_impact_score"]
@@ -367,6 +376,12 @@ def calculate_expected_impact_scores(df: pd.DataFrame) -> pd.DataFrame:
             .fillna(df["baseline_expected_impact_score"])
             .clip(0, 100)
             .round(1)
+        )
+    if "expected_impact_source" not in df.columns:
+        df["expected_impact_source"] = np.where(
+            df["pre_tournament_expected_impact_score"].notna(),
+            "transparent_baseline_fallback",
+            "unavailable_missing_features",
         )
 
     return df
@@ -395,40 +410,112 @@ def calculate_value_efficiency_score(df: pd.DataFrame) -> pd.DataFrame:
     """Score expected impact relative to market value without inventing values."""
 
     df = df.copy()
-    impact = pd.to_numeric(df["pre_tournament_expected_impact_score"], errors="coerce").fillna(
-        df.get("baseline_expected_impact_score", 50)
-    )
+    impact = pd.to_numeric(df["pre_tournament_expected_impact_score"], errors="coerce")
     market_m = pd.to_numeric(df["market_value_eur"], errors="coerce").fillna(0) / 1_000_000
     efficiency_raw = impact / np.sqrt(market_m.clip(lower=0.75))
     df["value_efficiency_score"] = efficiency_raw.rank(pct=True).fillna(0.5).mul(100).round(1)
-    df.loc[market_m <= 0, "value_efficiency_score"] = 35.0
+    df.loc[(market_m <= 0) | impact.isna(), "value_efficiency_score"] = pd.NA
     return df
 
 
-def calculate_value_opportunity_score(df: pd.DataFrame, strategy: str = "Balanced club") -> pd.DataFrame:
+def calculate_playing_time_confidence_score(df: pd.DataFrame) -> pd.DataFrame:
+    """Use recent senior minutes as a data-volume confidence proxy."""
+
+    df = df.copy()
+    minutes = pd.to_numeric(df["minutes"], errors="coerce") if "minutes" in df.columns else pd.Series(pd.NA, index=df.index)
+    df["recent_senior_minutes"] = minutes
+    df["playing_time_confidence_score"] = (minutes / 2400 * 100).clip(0, 100).round(1)
+    return df
+
+
+def calculate_value_opportunity_score(
+    df: pd.DataFrame,
+    strategy: str = "Balanced club",
+    custom_weights: dict[str, float] | None = None,
+) -> pd.DataFrame:
     """Calculate club strategy ranking score for recruitment shortlists."""
 
     df = df.copy()
     df = calculate_age_resale_score(df)
     df = calculate_value_efficiency_score(df)
+    df = calculate_playing_time_confidence_score(df)
     if "availability_score" not in df.columns:
-        df["availability_score"] = df["injury_availability_score"] if "injury_availability_score" in df.columns else 100
+        df["availability_score"] = df["injury_availability_score"] if "injury_availability_score" in df.columns else pd.NA
     if "role_fit_score" not in df.columns:
-        df["role_fit_score"] = df["best_profile_score"] if "best_profile_score" in df.columns else 50
+        df["role_fit_score"] = df["best_profile_score"] if "best_profile_score" in df.columns else pd.NA
 
-    weights = VALUE_STRATEGIES.get(strategy, VALUE_STRATEGIES["Balanced club"])
+    weights = custom_weights if custom_weights is not None else VALUE_STRATEGIES.get(strategy, VALUE_STRATEGIES["Balanced club"])
     score = pd.Series(0.0, index=df.index)
+    has_all_inputs = pd.Series(True, index=df.index)
     for col, weight in weights.items():
-        values = df[col] if col in df.columns else pd.Series(50, index=df.index)
-        score = score + pd.to_numeric(values, errors="coerce").fillna(50) * weight
-    df["value_opportunity_score"] = clip_score(score).round(1)
-    df["recommendation"] = pd.cut(
-        df["value_opportunity_score"],
-        bins=[-0.1, 55, 68, 80, 100],
-        labels=["Low priority", "Monitor", "Shortlist", "Priority target"],
+        values = pd.to_numeric(df[col], errors="coerce") if col in df.columns else pd.Series(pd.NA, index=df.index)
+        has_all_inputs = has_all_inputs & values.notna()
+        score = score + values.fillna(0) * weight
+    df["value_opportunity_score"] = pd.Series(clip_score(score), index=df.index).where(has_all_inputs).round(1)
+    df = add_recommendation_and_risk_fields(df)
+    return df
+
+
+def add_recommendation_and_risk_fields(df: pd.DataFrame) -> pd.DataFrame:
+    """Create recommendation, reason and risk labels for shortlist decisions."""
+
+    df = df.copy()
+    def numeric_col(name: str) -> pd.Series:
+        return pd.to_numeric(df[name], errors="coerce") if name in df.columns else pd.Series(pd.NA, index=df.index)
+
+    expected = numeric_col("pre_tournament_expected_impact_score")
+    opportunity = numeric_col("value_opportunity_score")
+    value_efficiency = numeric_col("value_efficiency_score")
+    availability = numeric_col("availability_score")
+    minutes = numeric_col("recent_senior_minutes").combine_first(numeric_col("minutes"))
+    age = numeric_col("age")
+    market_value = numeric_col("market_value_eur")
+
+    df["recommendation"] = "Low priority"
+    df.loc[opportunity >= 80, "recommendation"] = "Priority target"
+    df.loc[opportunity.between(68, 79.999), "recommendation"] = "Watchlist"
+    df.loc[opportunity.between(55, 67.999), "recommendation"] = "Monitor"
+    df.loc[opportunity.isna(), "recommendation"] = "Low priority"
+
+    df["recommendation_reason"] = "Insufficient expected-impact or value-opportunity signal from available real data."
+    df.loc[
+        (expected >= 70) & (value_efficiency >= 70) & (age <= 24),
+        "recommendation_reason",
+    ] = "High expected impact, strong value efficiency and suitable age profile."
+    df.loc[
+        (expected >= 72) & (market_value > 30_000_000),
+        "recommendation_reason",
+    ] = "Strong player, but market value limits upside."
+    df.loc[
+        (value_efficiency >= 70) & (expected < 65),
+        "recommendation_reason",
+    ] = "Good value, but expected tournament impact is only moderate."
+    df.loc[
+        (expected >= 70) & (availability < 60),
+        "recommendation_reason",
+    ] = "High impact potential, but availability risk is elevated."
+    df.loc[
+        (df["recommendation"] == "Priority target")
+        & df["recommendation_reason"].eq("Insufficient expected-impact or value-opportunity signal from available real data."),
+        "recommendation_reason",
+    ] = "Strong value opportunity score from the active recruitment strategy weights."
+
+    risk_score = pd.Series(0.0, index=df.index)
+    risk_score += (100 - availability.fillna(50)) * 0.35
+    risk_score += (100 - (minutes.fillna(0) / 2400 * 100).clip(0, 100)) * 0.30
+    risk_score += age.fillna(28).sub(29).clip(lower=0).mul(8).clip(0, 100) * 0.20
+    risk_score += (market_value.fillna(0) / 60_000_000 * 100).clip(0, 100) * 0.15
+    df["risk_score"] = clip_score(risk_score).round(1)
+    df["risk_band"] = pd.cut(
+        df["risk_score"],
+        bins=[-0.1, 35, 65, 100],
+        labels=["Low", "Medium", "High"],
     ).astype(str)
-    medical_mask = pd.to_numeric(df.get("availability_score", 100), errors="coerce").fillna(100) < 45
-    df.loc[medical_mask & (df["recommendation"] != "Low priority"), "recommendation"] = "Medical watch"
+    df["risk_reason"] = "Balanced risk profile across availability, minutes, age and fee exposure."
+    df.loc[availability < 60, "risk_reason"] = "Availability risk is elevated."
+    df.loc[minutes < 900, "risk_reason"] = "Recent senior minutes are limited, reducing confidence."
+    df.loc[age > 30, "risk_reason"] = "Age profile reduces resale upside."
+    df.loc[market_value > 45_000_000, "risk_reason"] = "Market value creates higher fee exposure."
     return df
 
 

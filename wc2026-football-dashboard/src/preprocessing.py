@@ -66,9 +66,13 @@ def clean_player_data(df: pd.DataFrame) -> pd.DataFrame:
         "injury_source_url",
         "market_value_source",
         "model_expected_impact_source",
+        "expected_impact_source",
         "model_warning",
         "performance_outcome",
         "recommendation",
+        "recommendation_reason",
+        "risk_band",
+        "risk_reason",
         "latest_market_value_date",
         "salimt_latest_market_value_date",
         "latest_value_competition_id",
@@ -119,21 +123,30 @@ def apply_expected_impact_model(df: pd.DataFrame) -> pd.DataFrame:
     df["pre_tournament_expected_impact_score"] = predict_expected_impact(df, model_summary)
     if model_summary.get("model_available"):
         df["model_expected_impact_source"] = "historical_model"
+        df["expected_impact_source"] = "supervised_historical_model"
         df["model_warning"] = ""
     else:
-        df["model_expected_impact_source"] = "baseline_expected_impact_score"
+        baseline_available = df["baseline_expected_impact_score"].notna()
+        df["model_expected_impact_source"] = "disabled"
+        df["expected_impact_source"] = "unavailable_missing_features"
+        df.loc[baseline_available, "expected_impact_source"] = "transparent_baseline_fallback"
         df["model_warning"] = str(model_summary.get("warning", ""))
     df["historical_model_available"] = bool(model_summary.get("model_available", False))
+    df["model_status"] = str(model_summary.get("model_status", "unknown"))
     return df
 
 
-def finalise_player_outputs(df: pd.DataFrame, strategy: str = "Balanced club") -> pd.DataFrame:
+def finalise_player_outputs(
+    df: pd.DataFrame,
+    strategy: str = "Balanced club",
+    custom_weights: dict[str, float] | None = None,
+) -> pd.DataFrame:
     """Calculate expected impact, actual impact validation, and opportunity fields."""
 
     df = calculate_expected_impact_scores(df)
     df = apply_expected_impact_model(df)
     df = calculate_actual_tournament_impact_score(df)
-    df = calculate_value_opportunity_score(df, strategy=strategy)
+    df = calculate_value_opportunity_score(df, strategy=strategy, custom_weights=custom_weights)
     return df.sort_values("value_opportunity_score", ascending=False).reset_index(drop=True)
 
 

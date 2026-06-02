@@ -160,6 +160,45 @@ def create_market_value_vs_expected_impact_chart(df: pd.DataFrame) -> go.Figure:
     return fig
 
 
+def create_price_to_impact_quadrant_chart(df: pd.DataFrame) -> go.Figure:
+    """Price-to-impact recruitment quadrant."""
+
+    chart_df = df[df["pre_tournament_expected_impact_score"].notna()].copy()
+    if chart_df.empty:
+        fig = go.Figure()
+        fig.add_annotation(text="Expected-impact data is unavailable.", showarrow=False, x=0.5, y=0.5)
+        fig.update_layout(height=470, xaxis_visible=False, yaxis_visible=False)
+        return fig
+
+    value_threshold = chart_df["market_value_eur"].median()
+    impact_threshold = chart_df["pre_tournament_expected_impact_score"].median()
+    fig = px.scatter(
+        chart_df,
+        x="market_value_eur",
+        y="pre_tournament_expected_impact_score",
+        color="recommendation",
+        size="value_opportunity_score",
+        hover_name="player_name",
+        hover_data=["country", "club", "position", "age", "value_efficiency_score"],
+        labels={
+            "market_value_eur": "Market value (EUR)",
+            "pre_tournament_expected_impact_score": "Expected WC impact",
+        },
+    )
+    fig.add_vline(x=value_threshold, line_dash="dash", line_color="#94a3b8")
+    fig.add_hline(y=impact_threshold, line_dash="dash", line_color="#94a3b8")
+    annotations = [
+        ("Undervalued targets", value_threshold * 0.45, min(100, impact_threshold + 15)),
+        ("Premium targets", value_threshold * 1.45, min(100, impact_threshold + 15)),
+        ("Low-cost depth", value_threshold * 0.45, max(0, impact_threshold - 15)),
+        ("Overpriced / low impact", value_threshold * 1.45, max(0, impact_threshold - 15)),
+    ]
+    for text, x, y in annotations:
+        fig.add_annotation(text=text, x=x, y=y, showarrow=False, font=dict(size=12, color="#334155"))
+    fig.update_layout(height=500, margin=dict(l=10, r=20, t=20, b=20), xaxis_tickprefix="EUR ")
+    return fig
+
+
 def create_market_value_vs_value_opportunity_chart(df: pd.DataFrame) -> go.Figure:
     """Scatter plot of market value against recruitment opportunity."""
 
@@ -199,14 +238,15 @@ def create_predicted_vs_actual_impact_chart(df: pd.DataFrame) -> go.Figure:
 
     chart_df = df[df["actual_tournament_impact_score"].notna()].copy()
     if chart_df.empty:
-        chart_df = pd.DataFrame(
-            {
-                "pre_tournament_expected_impact_score": [0, 100],
-                "actual_tournament_impact_score": [0, 100],
-                "player_name": ["Pending", "Pending"],
-                "performance_outcome": ["Pending", "Pending"],
-            }
+        fig = go.Figure()
+        fig.add_annotation(
+            text="Actual tournament data is pending. Add rows to data/raw/tournament_match_data.csv and refresh.",
+            showarrow=False,
+            x=0.5,
+            y=0.5,
         )
+        fig.update_layout(height=430, xaxis_visible=False, yaxis_visible=False)
+        return fig
     fig = px.scatter(
         chart_df,
         x="pre_tournament_expected_impact_score",
@@ -237,7 +277,15 @@ def create_performance_delta_distribution_chart(df: pd.DataFrame) -> go.Figure:
 
     chart_df = df[df["performance_delta"].notna()]
     if chart_df.empty:
-        chart_df = pd.DataFrame({"performance_delta": [0], "performance_outcome": ["Pending"]})
+        fig = go.Figure()
+        fig.add_annotation(
+            text="Performance deltas are pending until real tournament match data is added.",
+            showarrow=False,
+            x=0.5,
+            y=0.5,
+        )
+        fig.update_layout(height=390, xaxis_visible=False, yaxis_visible=False)
+        return fig
     fig = px.histogram(
         chart_df,
         x="performance_delta",
@@ -278,6 +326,53 @@ def create_expected_impact_distribution_chart(df: pd.DataFrame) -> go.Figure:
         labels={"pre_tournament_expected_impact_score": "Pre-tournament expected impact"},
     )
     fig.update_layout(height=430, margin=dict(l=10, r=20, t=20, b=20), barmode="overlay")
+    return fig
+
+
+def create_expected_impact_vs_value_efficiency_chart(df: pd.DataFrame) -> go.Figure:
+    """Compare expected impact with market-value efficiency."""
+
+    fig = px.scatter(
+        df,
+        x="value_efficiency_score",
+        y="pre_tournament_expected_impact_score",
+        color="risk_band",
+        size="value_opportunity_score",
+        hover_name="player_name",
+        hover_data=["country", "club", "position", "market_value_eur", "recommendation"],
+        labels={
+            "value_efficiency_score": "Value efficiency",
+            "pre_tournament_expected_impact_score": "Expected WC impact",
+        },
+    )
+    fig.update_layout(height=430, margin=dict(l=10, r=20, t=20, b=20))
+    return fig
+
+
+def create_recommendation_breakdown_chart(df: pd.DataFrame) -> go.Figure:
+    """Bar chart of recommendation categories."""
+
+    counts = df["recommendation"].fillna("Unknown").value_counts().reset_index()
+    counts.columns = ["Recommendation", "Players"]
+    fig = px.bar(counts, x="Recommendation", y="Players", color="Recommendation", text="Players")
+    fig.update_layout(height=360, margin=dict(l=10, r=20, t=20, b=20), showlegend=False)
+    return fig
+
+
+def create_risk_vs_opportunity_matrix(df: pd.DataFrame) -> go.Figure:
+    """Show risk score against value opportunity."""
+
+    fig = px.scatter(
+        df,
+        x="risk_score",
+        y="value_opportunity_score",
+        color="recommendation",
+        size="pre_tournament_expected_impact_score",
+        hover_name="player_name",
+        hover_data=["country", "club", "age", "market_value_eur", "risk_reason"],
+        labels={"risk_score": "Risk score", "value_opportunity_score": "Value opportunity score"},
+    )
+    fig.update_layout(height=430, margin=dict(l=10, r=20, t=20, b=20))
     return fig
 
 
