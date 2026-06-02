@@ -126,7 +126,7 @@ Recommended historical tournaments:
 
 ## How To Enable The Supervised Expected-Impact Model
 
-The current project uses the transparent baseline fallback because real historical training rows are not yet provided.
+The current project uses the transparent baseline fallback because the real historical target rows now exist, but the required real pre-tournament predictor values are not complete enough to train a supervised model.
 
 To enable the supervised model:
 
@@ -163,7 +163,7 @@ Current implemented source:
 
 - [Fjelstul World Cup Database](https://github.com/jfjelstul/worldcup), accessed through the [DataHub World Cup CSV dataset](https://datahub.io/football/worldcup)
 - License: CC-BY-SA 4.0, with attribution and share-alike requirements
-- Fields collected: squads, player birth dates, player appearances, starts, goals, substitutions, bookings, matches and clean-sheet context
+- Fields collected: squads, player birth dates, player appearances, starts, goals, substitutions, bookings, matches, clean-sheet context, tournament standings and group standings
 - Years collected: World Cup 2014, 2018 and 2022
 
 The collector writes:
@@ -175,9 +175,20 @@ data/historical/source_audit_log.csv
 
 The first `actual_tournament_impact_score` is an MVP target built only from real tournament output. Outfield players are scored from tournament minutes, starts and goals. Goalkeepers are scored from tournament minutes, starts and clean sheets. Scores are percentile-adjusted within broad position groups and scaled 0-100.
 
-Fields still missing from the open source include club, league, assists, pre-tournament market value, club-season minutes, club-season goals/assists, injury availability, tactical role fit and national-team context. These remain null and are not fabricated.
+The collector also derives previous World Cup experience from real earlier World Cup records:
 
-Because those pre-tournament predictor fields are not yet populated, the supervised model remains disabled after this initial collection. To enable the model, join or manually curate compliant real pre-tournament feature exports into `data/historical/world_cup_player_training_data.csv`, then run:
+- `previous_world_cup_minutes`: cumulative prior World Cup minutes by player ID.
+- `previous_world_cup_matches`: cumulative prior World Cup appearances by player ID.
+- `previous_world_cup_impact_score`: most recent prior World Cup impact score where a prior row exists.
+- `is_world_cup_debutant`: `True` only when previous World Cup appearances equal zero.
+
+Debutant status is not guessed from age or reputation.
+
+The historical file includes a simple real-data-derived `national_team_strength` proxy based on the team's most recent previous World Cup final standing. Higher scores mean stronger previous World Cup finish. This is not FIFA ranking. `group_difficulty_score` is calculated as the average of the other group teams' previous World Cup strength proxies when those opponent scores are available.
+
+Fields still missing from the open source include club, league, assists, pre-tournament market value, club-season minutes, club-season goals/assists, senior national-team caps, injury availability and tactical role fit. These remain null and are not fabricated.
+
+Because several required pre-tournament predictor fields are still not populated, the supervised model remains disabled after this collection. To enable the model, join or manually curate compliant real pre-tournament feature exports into `data/historical/world_cup_player_training_data.csv`, then run:
 
 ```bash
 python scripts/check_model_readiness.py

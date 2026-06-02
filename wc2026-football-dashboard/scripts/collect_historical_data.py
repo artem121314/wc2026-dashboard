@@ -38,6 +38,8 @@ SOURCE_TABLES = {
     "goals": f"{DATAHUB_BASE_URL}/goals.csv",
     "substitutions": f"{DATAHUB_BASE_URL}/substitutions.csv",
     "bookings": f"{DATAHUB_BASE_URL}/bookings.csv",
+    "tournament_standings": f"{DATAHUB_BASE_URL}/tournament_standings.csv",
+    "group_standings": f"{DATAHUB_BASE_URL}/group_standings.csv",
 }
 
 AUDIT_LOG_PATH = HISTORICAL_DATA_DIR / "source_audit_log.csv"
@@ -177,16 +179,17 @@ def _calculate_actual_impact(df: pd.DataFrame) -> pd.Series:
     return impact.round(1)
 
 
-def _build_training_rows(tables: dict[str, pd.DataFrame]) -> pd.DataFrame:
+def _build_player_tournament_rows(tables: dict[str, pd.DataFrame]) -> pd.DataFrame:
+    """Build real player-tournament rows for all available men's World Cups."""
+
     tournaments = tables["tournaments"].copy()
     tournaments = tournaments[
-        tournaments["year"].isin(TARGET_YEARS)
-        & tournaments["tournament_name"].astype(str).str.contains("Men's World Cup", case=False, na=False)
+        tournaments["tournament_name"].astype(str).str.contains("Men's World Cup", case=False, na=False)
     ].copy()
     tournament_ids = set(tournaments["tournament_id"])
 
     if not tournament_ids:
-        raise RuntimeError("No target men's World Cup tournaments were found in the public source tables.")
+        raise RuntimeError("No men's World Cup tournaments were found in the public source tables.")
 
     squads = tables["squads"].copy()
     squads = squads[squads["tournament_id"].isin(tournament_ids)].copy()
@@ -339,8 +342,6 @@ def _build_training_rows(tables: dict[str, pd.DataFrame]) -> pd.DataFrame:
         "market_value_before_tournament",
         "club_level_score",
         "league_strength_score",
-        "national_team_strength",
-        "group_difficulty_score",
         "club_minutes_previous_season",
         "goals_previous_season",
         "assists_previous_season",
@@ -350,15 +351,104 @@ def _build_training_rows(tables: dict[str, pd.DataFrame]) -> pd.DataFrame:
         "national_team_caps",
         "senior_national_team_caps",
         "major_tournament_experience",
-        "is_world_cup_debutant",
-        "previous_world_cup_minutes",
-        "previous_world_cup_matches",
-        "previous_world_cup_impact_score",
         "injury_availability_score",
     ]
     for col in unavailable_columns:
         output[col] = pd.NA
 
+    output = output.sort_values(
+        ["tournament_year", "country", "player_name"],
+        kind="stable",
+    )
+    return output.reset_index(drop=True)
+
+
+def _build_team_strength_scores(tables: dict[str, pd.DataFrame]) -> pd.DataFrame:
+    """Use previous World Cup final standing as a real-derived team-strength proxy."""
+
+    tournaments = tables["tournaments"].copy()
+    tournaments = tournaments[
+        tournaments["tournament_name"].astype(str).str.contains("Men's World Cup", case=False, na=False)
+    ][["tournament_id", "year"]].copy()
+    standings = tables["tournament_standings"].copy()
+    standings = standings.merge(tournaments, on="tournament_id", how="inner")
+    standings["position"] = pd.to_numeric(standings["position"], errors="coerce")
+    team_count = standings.groupby("tournament_id")["team_id"].transform("nunique")
+    denominator = (team_count - 1).replace(0, pd.NA)
+    standings["world_cup_finish_strength_score"] = ((team_count - standings["position"]) / denominator * 100).clip(0, 100)
+    return standings[
+        ["tournament_id", "year", "team_id", "team_name", "world_cup_finish_strength_score"]
+    ].dropna(subset=["world_cup_finish_strength_score"])
+
+
+def _add_previous_team_strength(output: pd.DataFrame, tables: dict[str, pd.DataFrame]) -> pd.DataFrame:
+    """Add national-team strength from the team's most recent previous World Cup finish."""
+
+    output = output.copy()
+    strength_scores = _build_team_strength_scores(tables)
+    scores_by_team = {
+        team_id: group.sort_values("year")[["year", "world_cup_finish_strength_score"]].to_records(index=False).tolist()
+        for team_id, group in strength_scores.groupby("team_id")
+    }
+
+    def previous_strength(row: pd.Series) -> object:
+        team_scores = scores_by_team.get(row["team_id"], [])
+        prior_scores = [score for year, score in team_scores if year < row["tournament_year"]]
+        return prior_scores[-1] if prior_scores else pd.NA
+
+    output["national_team_strength"] = output.apply(previous_strength, axis=1)
+    return output
+
+
+def _add_group_difficulty(output: pd.DataFrame, tables: dict[str, pd.DataFrame]) -> pd.DataFrame:
+    """Add average opponent previous-strength proxy for the current group."""
+
+    output = output.copy()
+    group_standings = tables["group_standings"].copy()
+    group_standings = group_standings[
+        group_standings["stage_name"].astype(str).str.lower().eq("group stage")
+    ][["tournament_id", "group_name", "team_id"]].drop_duplicates()
+
+    team_strength = output[
+        ["tournament_id", "team_id", "national_team_strength"]
+    ].drop_duplicates(subset=["tournament_id", "team_id"])
+    groups = group_standings.merge(team_strength, on=["tournament_id", "team_id"], how="left")
+
+    difficulty: dict[tuple[object, object], object] = {}
+    for (tournament_id, group_name), group in groups.groupby(["tournament_id", "group_name"]):
+        for _, row in group.iterrows():
+            opponents = group[group["team_id"] != row["team_id"]]
+            values = pd.to_numeric(opponents["national_team_strength"], errors="coerce").dropna()
+            difficulty[(tournament_id, row["team_id"])] = round(float(values.mean()), 1) if not values.empty else pd.NA
+
+    output["group_difficulty_score"] = [
+        difficulty.get((row.tournament_id, row.team_id), pd.NA) for row in output.itertuples(index=False)
+    ]
+    return output
+
+
+def _add_previous_world_cup_experience(output: pd.DataFrame) -> pd.DataFrame:
+    """Add real-derived previous World Cup experience by player ID."""
+
+    output = output.sort_values(["player_id", "tournament_year"], kind="stable").copy()
+    output["previous_world_cup_minutes"] = (
+        output.groupby("player_id")["minutes_at_tournament"].cumsum() - output["minutes_at_tournament"]
+    )
+    output["previous_world_cup_matches"] = (
+        output.groupby("player_id")["appearances_at_tournament"].cumsum() - output["appearances_at_tournament"]
+    )
+    output["previous_world_cup_impact_score"] = output.groupby("player_id")["actual_tournament_impact_score"].shift(1)
+    output["is_world_cup_debutant"] = output["previous_world_cup_matches"].fillna(0).eq(0)
+    return output
+
+
+def _build_training_rows(tables: dict[str, pd.DataFrame]) -> pd.DataFrame:
+    all_rows = _build_player_tournament_rows(tables)
+    all_rows = _add_previous_team_strength(all_rows, tables)
+    all_rows = _add_group_difficulty(all_rows, tables)
+    all_rows = _add_previous_world_cup_experience(all_rows)
+
+    output = all_rows[all_rows["tournament_year"].isin(TARGET_YEARS)].copy()
     output = output[MODEL_AND_TARGET_COLUMNS].sort_values(
         ["tournament_year", "country", "player_name"],
         kind="stable",
@@ -377,12 +467,15 @@ def _build_source_audit_log() -> pd.DataFrame:
             "access_method": "Direct CSV download from DataHub stable URLs",
             "date_accessed": accessed,
             "fields_used": (
-                "squads, players, tournaments, matches, player_appearances, goals, substitutions, bookings"
+                "squads, players, tournaments, matches, player_appearances, goals, substitutions, bookings, "
+                "tournament_standings, group_standings"
             ),
             "allowed_for_project": True,
             "notes": (
                 "Used to create real player-tournament rows for 2014, 2018 and 2022. "
-                "Club, assists, market values and club-season pre-tournament features are not provided and remain null."
+                "Previous World Cup experience is derived from earlier real World Cup rows. "
+                "National-team strength is a previous World Cup final-standing proxy, not FIFA ranking. "
+                "Club, assists, market values, senior caps and club-season pre-tournament features are not provided and remain null."
             ),
         },
         {

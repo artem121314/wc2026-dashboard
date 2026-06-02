@@ -184,8 +184,8 @@ Use `data/historical/world_cup_player_training_data_template.csv` as the schema-
 | `assists_previous_season` | Club assists in the previous season. | Yes | number | 7 | modelling |
 | `national_team_caps` | Caps before the tournament. | Yes | number | 34 | modelling |
 | `expected_starter_score` | Real or curated starter likelihood score scaled 0-100. | Yes | number | 75.0 | modelling |
-| `national_team_strength` | Country strength score scaled 0-100. | Yes | number | 80.0 | modelling |
-| `group_difficulty_score` | Group difficulty score scaled 0-100. | Yes | number | 62.0 | modelling |
+| `national_team_strength` | Previous World Cup final-standing strength proxy scaled 0-100 when derived by the collector; not FIFA ranking. | Yes | number | 80.0 | modelling |
+| `group_difficulty_score` | Average opponent previous-strength proxy for the current group when available. | Yes | number | 62.0 | modelling |
 | `injury_availability_score` | Pre-tournament availability score scaled 0-100. | Yes | number | 95.0 | modelling |
 | `recent_form_score` | Pre-tournament form score scaled 0-100. | Yes | number | 70.0 | modelling |
 | `role_fit_score` | Tactical/role fit score scaled 0-100. | Yes | number | 74.0 | modelling |
@@ -199,11 +199,11 @@ Use `data/historical/world_cup_player_training_data_template.csv` as the schema-
 | `yellow_cards_at_tournament` | Real yellow-card count if source provides bookings. | Optional | number | 1 | audit, target context |
 | `red_cards_at_tournament` | Real sending-off count if source provides bookings. | Optional | number | 0 | audit, target context |
 | `actual_tournament_impact_score` | Real position-adjusted historical tournament impact target scaled 0-100. | Yes | number | 68.0 | modelling target |
-| `is_world_cup_debutant` | Whether the player was a World Cup debutant for that tournament. | Optional | boolean | true | optional modelling |
-| `previous_world_cup_minutes` | Player's World Cup minutes before that tournament. | Optional | number | 0 | optional modelling |
-| `previous_world_cup_matches` | Player's World Cup matches before that tournament. | Optional | number | 0 | optional modelling |
-| `previous_world_cup_impact_score` | Player's previous World Cup impact score before that tournament. | Optional | number | 55.0 | optional modelling |
-| `senior_national_team_caps` | Senior national-team caps before that tournament if available separately from `national_team_caps`. | Optional | number | 34 | optional modelling |
+| `is_world_cup_debutant` | True when real previous World Cup appearances equal zero; false when prior appearances exist. | Optional | boolean | true | optional modelling |
+| `previous_world_cup_minutes` | Cumulative real World Cup minutes before that tournament. | Optional | number | 0 | optional modelling |
+| `previous_world_cup_matches` | Cumulative real World Cup appearances before that tournament. | Optional | number | 0 | optional modelling |
+| `previous_world_cup_impact_score` | Most recent prior World Cup impact score if a prior player-tournament row exists. | Optional | number | 55.0 | optional modelling |
+| `senior_national_team_caps` | Senior national-team caps before that tournament if a compliant source provides them; not approximated from World Cup appearances. | Optional | number | 34 | optional modelling |
 | `major_tournament_experience` | Real count or score for major tournament experience before that tournament. | Optional | number | 4 | optional modelling |
 | `age_group` | Age group before the tournament. Can be derived from real `age`. | Optional | string | U23 | optional modelling |
 | `data_source` | Human-readable source used for the row. | Optional | string | Fjelstul World Cup Database via DataHub | audit |

@@ -65,8 +65,8 @@ The readiness script checks whether these tournament years are present. Missing 
 | `market_value_before_tournament` | Real pre-tournament market value in euros. |
 | `club_level_score` | Real or documented club-strength score scaled 0-100. |
 | `league_strength_score` | Real or documented league-strength score scaled 0-100. |
-| `national_team_strength` | Real or documented national-team strength score scaled 0-100. |
-| `group_difficulty_score` | Group/tournament draw difficulty score scaled 0-100. |
+| `national_team_strength` | Real or documented national-team strength score scaled 0-100. The current collector uses most recent previous World Cup final standing as a proxy, not FIFA ranking. |
+| `group_difficulty_score` | Group/tournament draw difficulty score scaled 0-100. The current collector averages opponents' previous World Cup strength proxies where available. |
 
 ### C. Pre-Tournament Performance
 
@@ -87,10 +87,10 @@ These columns are optional model signals. Missing previous World Cup experience 
 | --- | --- |
 | `senior_national_team_caps` | Caps before the tournament. |
 | `major_tournament_experience` | Count or documented score for prior major senior tournaments. |
-| `is_world_cup_debutant` | True/false only if a real source supports it. Do not infer. |
-| `previous_world_cup_minutes` | World Cup minutes before this tournament. |
-| `previous_world_cup_matches` | World Cup appearances before this tournament. |
-| `previous_world_cup_impact_score` | Previous World Cup impact score if real prior tournament data exists. |
+| `is_world_cup_debutant` | True when real previous World Cup appearances equal zero; false when prior appearances exist. Do not infer from age. |
+| `previous_world_cup_minutes` | Cumulative real World Cup minutes before this tournament. |
+| `previous_world_cup_matches` | Cumulative real World Cup appearances before this tournament. |
+| `previous_world_cup_impact_score` | Most recent prior World Cup impact score if a prior player-tournament row exists. |
 
 ### E. Target
 
@@ -133,8 +133,20 @@ For this MVP collection, the available real fields support:
 - `yellow_cards_at_tournament`
 - `red_cards_at_tournament`
 - `actual_tournament_impact_score`
+- `previous_world_cup_minutes`
+- `previous_world_cup_matches`
+- `previous_world_cup_impact_score`
+- `is_world_cup_debutant`
+- `national_team_strength`
+- `group_difficulty_score`
 
-The same source does not provide club, league, assists, market value, club-season performance, injury availability, tactical fit or national-team context inputs. Those columns remain blank/null until a compliant source or manually curated export is added.
+The same source does not provide club, league, assists, market value, club-season performance, senior national-team caps, injury availability or tactical fit inputs. Those columns remain blank/null until a compliant source or manually curated export is added.
+
+Previous World Cup experience is calculated from real prior World Cup player records using source player IDs. The training rows remain 2014, 2018 and 2022, but earlier World Cups are read internally so the collector can calculate whether a player had prior World Cup appearances.
+
+`national_team_strength` is currently a previous World Cup finish proxy: the winner of the team's most recent prior World Cup appearance receives 100, the lowest-ranked team receives 0, and other teams are scaled by final standing. If a team has no prior World Cup standing in the source, the value remains null.
+
+`group_difficulty_score` averages the available `national_team_strength` values for the other teams in the same group. If opponent strength proxies are unavailable, the group difficulty remains null.
 
 ## MVP Target Construction
 

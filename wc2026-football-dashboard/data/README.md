@@ -58,7 +58,18 @@ The first real historical target collection can be run with:
 python scripts/collect_historical_data.py
 ```
 
-This writes real player-tournament rows from the public Fjelstul/DataHub World Cup CSV tables and creates `data/historical/source_audit_log.csv`. It does not fabricate unavailable fields. The current source supports tournament output fields such as minutes, starts, goals, goalkeeper clean sheets and cards, but does not provide club, market values, assists or club-season pre-tournament inputs. Those fields remain blank until a compliant export is added.
+This writes real player-tournament rows from the public Fjelstul/DataHub World Cup CSV tables and creates `data/historical/source_audit_log.csv`. It does not fabricate unavailable fields. The current source supports tournament output fields such as minutes, starts, goals, goalkeeper clean sheets and cards.
+
+The collector derives previous World Cup experience from real earlier World Cup records:
+
+- `previous_world_cup_minutes`
+- `previous_world_cup_matches`
+- `previous_world_cup_impact_score`
+- `is_world_cup_debutant`
+
+Debutant status is based on previous World Cup appearances, not age. The collector also derives `national_team_strength` from the team's most recent previous World Cup final standing and `group_difficulty_score` from group opponents' previous-strength proxies. These are transparent proxies, not FIFA rankings.
+
+The current source does not provide club, market values, assists, senior national-team caps, injury availability, tactical fit or club-season pre-tournament inputs. Those fields remain blank until a compliant export is added.
 
 ## Tournament Updates
 
