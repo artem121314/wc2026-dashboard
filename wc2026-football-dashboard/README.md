@@ -198,6 +198,28 @@ python scripts/refresh_data.py
 
 The source audit log records every dataset used and rejected. Restricted providers such as Opta, WhoScored, Wyscout and direct Transfermarkt page scraping are not used.
 
+## Manual Historical Predictor Enrichment
+
+No reliable compliant public source has been joined automatically for historical club, league and pre-tournament market context yet. The project therefore includes a manual enrichment workflow:
+
+```text
+data/historical/manual_enrichment_template.csv
+docs/manual_historical_enrichment.md
+scripts/apply_manual_historical_enrichment.py
+```
+
+Copy the template to `data/historical/manual_enrichment.csv`, fill only values supported by compliant real sources, then run:
+
+```bash
+python scripts/apply_manual_historical_enrichment.py
+python scripts/check_model_readiness.py
+python scripts/validate_project.py
+```
+
+The enrichment script uses exact `tournament_year + player_name` matching only. It rejects duplicate keys, requires provenance for supplied values, updates only non-null fields, and does not fuzzy-match or fabricate missing values.
+
+The supervised model requires at least 60% real non-null coverage for each required predictor before it can train. `scripts/check_model_readiness.py` reports non-null counts, percentages, distinct values and whether each feature is usable.
+
 ## Actual Tournament Data Requirements
 
 `data/raw/tournament_match_data.csv` should contain real match-level rows:
@@ -337,9 +359,11 @@ wc2026-football-dashboard/
 │   └── processed/
 ├── docs/
 │   ├── data_schema.md
-│   └── historical_data_collection_plan.md
+│   ├── historical_data_collection_plan.md
+│   └── manual_historical_enrichment.md
 ├── notebooks/
 ├── scripts/
+│   ├── apply_manual_historical_enrichment.py
 │   ├── collect_historical_data.py
 │   ├── check_model_readiness.py
 │   ├── refresh_data.py

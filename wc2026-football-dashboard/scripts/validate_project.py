@@ -74,8 +74,11 @@ def validate_project_structure(rows: list[ReportRow]) -> None:
         "data/historical",
         "data/processed",
         "docs/historical_data_collection_plan.md",
+        "docs/manual_historical_enrichment.md",
         "scripts/collect_historical_data.py",
+        "scripts/apply_manual_historical_enrichment.py",
         "scripts/check_model_readiness.py",
+        "data/historical/manual_enrichment_template.csv",
         "README.md",
         "requirements.txt",
     ]
@@ -177,6 +180,14 @@ def validate_historical_model_readiness(rows: list[ReportRow]) -> None:
             "WARN",
             "Historical model",
             "Missing required pre-tournament feature values: " + ", ".join(str(col) for col in missing_feature_values),
+        )
+    below_coverage = readiness.get("required_features_below_minimum_coverage", [])
+    if below_coverage and readiness["row_count"] > 0:
+        add(
+            rows,
+            "WARN",
+            "Historical model",
+            "Required predictors below minimum real-value coverage: " + ", ".join(str(col) for col in below_coverage),
         )
 
     years = readiness.get("tournament_years_available", [])

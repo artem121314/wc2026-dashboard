@@ -71,6 +71,25 @@ Debutant status is based on previous World Cup appearances, not age. The collect
 
 The current source does not provide club, market values, assists, senior national-team caps, injury availability, tactical fit or club-season pre-tournament inputs. Those fields remain blank until a compliant export is added.
 
+## Manual Historical Enrichment
+
+Use `data/historical/manual_enrichment_template.csv` when a compliant source or licensed/manual export provides historical predictor values that are not available from the World Cup source.
+
+Recommended workflow:
+
+1. Copy `data/historical/manual_enrichment_template.csv` to `data/historical/manual_enrichment.csv`.
+2. Fill only real sourced values.
+3. Include `data_source` for every row where a value is supplied.
+4. Run:
+
+```bash
+python scripts/apply_manual_historical_enrichment.py
+```
+
+The script matches exact `tournament_year + player_name` keys, rejects duplicate keys, and updates only non-null supplied values. It does not fuzzy-match names, infer values, or fabricate missing fields.
+
+See `docs/manual_historical_enrichment.md` for details.
+
 ## Tournament Updates
 
 To update live tournament validation:

@@ -148,6 +148,20 @@ Previous World Cup experience is calculated from real prior World Cup player rec
 
 `group_difficulty_score` averages the available `national_team_strength` values for the other teams in the same group. If opponent strength proxies are unavailable, the group difficulty remains null.
 
+## Manual Predictor Enrichment
+
+Historical club, league, market-value, club-season, caps, availability, form and role-fit predictors require separate compliant sources. The project does not currently auto-join these fields because public market-value datasets often have unclear licensing or unreliable player-name matching.
+
+Use:
+
+```text
+data/historical/manual_enrichment_template.csv
+docs/manual_historical_enrichment.md
+scripts/apply_manual_historical_enrichment.py
+```
+
+The manual workflow uses exact `tournament_year + player_name` keys, requires provenance for supplied values, and updates only non-null real values. It does not fuzzy-match players or fabricate missing predictors.
+
 ## MVP Target Construction
 
 The initial `actual_tournament_impact_score` is a transparent 0-100 target built from real tournament output:

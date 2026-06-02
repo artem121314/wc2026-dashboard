@@ -13,9 +13,8 @@ SRC_PATH = PROJECT_ROOT / "src"
 if str(SRC_PATH) not in sys.path:
     sys.path.insert(0, str(SRC_PATH))
 
-from model import BASE_EXPECTED_IMPACT_FEATURES
-from model import OPTIONAL_EXPERIENCE_FEATURES
 from model import check_historical_model_readiness
+from model import historical_feature_availability
 from model import load_historical_training_data
 
 
@@ -24,28 +23,7 @@ def _status(value: bool) -> str:
 
 
 def _feature_availability(data: pd.DataFrame) -> pd.DataFrame:
-    features = [*BASE_EXPECTED_IMPACT_FEATURES, *OPTIONAL_EXPERIENCE_FEATURES]
-    rows = []
-    row_count = len(data)
-    for feature in features:
-        if feature in data.columns:
-            non_null = int(data[feature].notna().sum())
-            distinct = int(data[feature].dropna().nunique())
-        else:
-            non_null = 0
-            distinct = 0
-        pct = round((non_null / row_count * 100), 1) if row_count else 0.0
-        rows.append(
-            {
-                "feature": feature,
-                "required": feature in BASE_EXPECTED_IMPACT_FEATURES,
-                "non_null": non_null,
-                "pct_non_null": pct,
-                "distinct_values": distinct,
-                "usable_for_modelling": bool(non_null > 0 and distinct > 1),
-            }
-        )
-    return pd.DataFrame(rows)
+    return historical_feature_availability(data)
 
 
 def main() -> int:
@@ -71,9 +49,13 @@ def main() -> int:
     if readiness.get("score_range_issues"):
         print("Score range issues: " + ", ".join(str(col) for col in readiness["score_range_issues"]))
     print(f"Required pre-tournament feature values present: {readiness['required_feature_values_present']}")
+    print(f"Minimum required predictor coverage: {readiness['minimum_required_feature_coverage_pct']}%")
     missing_features = readiness.get("missing_required_feature_values", [])
     if missing_features:
         print("Missing required pre-tournament feature values: " + ", ".join(str(col) for col in missing_features))
+    below_coverage = readiness.get("required_features_below_minimum_coverage", [])
+    if below_coverage:
+        print("Required predictors below coverage threshold: " + ", ".join(str(col) for col in below_coverage))
     print(f"Can train supervised model: {readiness['can_train']}")
     print(f"Supervised model available: {readiness['model_available']}")
     print(f"Model status: {readiness['model_status']}")
