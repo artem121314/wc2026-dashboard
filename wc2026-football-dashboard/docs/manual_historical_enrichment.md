@@ -103,19 +103,26 @@ python scripts/validate_project.py
 
 ## Model Readiness Threshold
 
-The supervised model remains disabled until:
+The supervised workflow has three modes:
+
+- `limited_historical_context_model`: MVP supervised model using real World Cup-derived features only.
+- `full_recruitment_model`: enriched supervised model using real market, club-season, caps, availability, form and role-fit predictors.
+- `baseline_fallback`: transparent weighted fallback used only if no supervised model can train.
+
+The limited model can train without market values, club-season stats, caps or injury data. Those fields are still important because they unlock the richer full recruitment model.
+
+Any supervised model still requires:
 
 - the historical target has enough real rows
 - target values are valid 0-100 scores
-- required predictor columns are present
-- each required predictor has at least 60% real non-null coverage
-- each required predictor has enough variation to be useful
+- at least three usable real predictor features
+- selected predictors have enough real non-null coverage and variation
 
-`scripts/check_model_readiness.py` prints feature availability by column so the next missing input is visible.
+`scripts/check_model_readiness.py` prints model mode, feature availability, features used and features excluded so the next missing input is visible.
 
-## How To Make The Supervised Model Turn On
+## How To Make The Full Recruitment Model Turn On
 
-The warning disappears only when real predictor coverage is sufficient. Do not add synthetic or guessed values to force activation.
+The limited supervised model can train from the existing real World Cup-derived data. The full recruitment model turns on only when real enrichment coverage is sufficient. Do not add synthetic or guessed values to force activation.
 
 1. Fill real predictor values in `data/historical/manual_enrichment_template.csv`.
 2. Apply the enrichment:
@@ -130,7 +137,7 @@ python scripts/apply_manual_historical_enrichment.py --input data/historical/man
 python scripts/check_model_readiness.py
 ```
 
-4. If feature coverage reaches the threshold, the supervised model becomes enabled.
+4. If rich feature coverage reaches the threshold, the full recruitment model becomes enabled. Otherwise the limited historical context model remains active.
 5. Refresh the dashboard dataset:
 
 ```bash
@@ -142,6 +149,6 @@ python scripts/refresh_data.py
 Current activation rules:
 
 - at least 300 usable historical target rows
-- at least 60% real non-null coverage for required player, tournament-context and World Cup-experience predictors
-- at least three usable real recruitment/pre-tournament predictors
+- at least three usable real predictors for the limited supervised model
+- at least three usable real recruitment/pre-tournament predictors for the full recruitment model
 - enough target variation and predictor variation for the model to learn

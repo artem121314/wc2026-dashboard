@@ -71,6 +71,8 @@ Debutant status is based on previous World Cup appearances, not age. The collect
 
 The current source does not provide club, market values, assists, senior national-team caps, injury availability, tactical fit or club-season pre-tournament inputs. Those fields remain blank until a compliant export is added.
 
+The existing historical file can still train the `limited_historical_context_model` because that mode uses only real World Cup-derived context and experience features. The richer `full_recruitment_model` remains a future enrichment target until compliant market, club-season, caps, form, availability and role-fit exports are added. If no supervised mode can train, the app uses `baseline_fallback`.
+
 ## Manual Historical Enrichment
 
 Use `data/historical/manual_enrichment_template.csv` when a compliant source or licensed/manual export provides historical predictor values that are not available from the World Cup source.

@@ -359,7 +359,12 @@ def render_data_status_panel(model_summary: dict[str, object], df: pd.DataFrame 
     else:
         expected_source = "unavailable"
     model_rows = [
-        ("Supervised model", "available" if model_summary.get("model_available") else "disabled"),
+        (
+            "Supervised model",
+            f"active: {model_summary.get('model_mode')}"
+            if model_summary.get("model_available")
+            else "disabled: using transparent baseline fallback",
+        ),
         ("Baseline fallback", "available" if baseline_available else "disabled"),
         ("Expected impact source used", expected_source),
         ("Actual impact validation", "available" if actual_available else "pending"),
@@ -443,7 +448,15 @@ def overview_page(df: pd.DataFrame, filtered_df: pd.DataFrame, model_summary: di
         "Which players should a club scout or buy before the 2026 World Cup because they are undervalued relative "
         "to their expected tournament impact?"
     )
-    if not model_summary.get("model_available"):
+    if model_summary.get("model_available"):
+        model_mode = str(model_summary.get("model_mode", "unknown"))
+        if model_mode == "limited_historical_context_model":
+            st.info("Supervised model active: limited historical context model.")
+        elif model_mode == "full_recruitment_model":
+            st.success("Supervised model active: full recruitment model.")
+        else:
+            st.info(f"Supervised model active: {model_mode}.")
+    else:
         st.warning(str(model_summary.get("warning") or model_summary.get("readiness_message") or FALLBACK_WARNING))
     render_data_status_panel(model_summary, df)
 
@@ -699,6 +712,9 @@ def model_page(model_summary: dict[str, object], readiness: dict[str, object]) -
     st.subheader("Expected Impact Model")
     st.markdown("#### Historical model readiness")
     readiness_rows = [
+        ("Model mode", model_summary.get("model_mode", readiness.get("selected_model_mode", "baseline_fallback"))),
+        ("Full recruitment model", "available" if readiness.get("full_recruitment_model_available") else "not yet available"),
+        ("Limited historical context model", "available" if readiness.get("limited_historical_context_model_available") else "not available"),
         ("Historical training file", "available" if readiness.get("training_file_exists") else "missing"),
         ("Template file", "available" if readiness.get("template_exists") else "missing"),
         ("Training rows", readiness.get("row_count", 0)),
@@ -714,7 +730,12 @@ def model_page(model_summary: dict[str, object], readiness: dict[str, object]) -
         ("Supervised model", "available" if model_summary.get("model_available") else "disabled"),
     ]
     st.dataframe(pd.DataFrame(readiness_rows, columns=["Check", "Status"]), hide_index=True, width="stretch")
-    if not readiness.get("can_train"):
+    if model_summary.get("model_available") and model_summary.get("model_mode") == "limited_historical_context_model":
+        st.info(
+            "The supervised model is active, but currently limited to real World Cup-derived historical context "
+            "features. Add richer real pre-tournament predictors to enable the full recruitment model."
+        )
+    elif not readiness.get("can_train"):
         st.warning(str(readiness.get("readiness_message") or readiness.get("disabled_reason") or "Historical training data is not ready."))
         if readiness.get("activation_status") == "disabled_insufficient_predictor_coverage":
             st.info(
@@ -740,10 +761,15 @@ def model_page(model_summary: dict[str, object], readiness: dict[str, object]) -
     st.markdown("#### Training result")
     if model_summary.get("model_available"):
         st.success(f"Supervised model available: {model_summary.get('selected_model_name')}")
+        st.write(f"Model mode: `{model_summary.get('model_mode')}`")
         st.write(f"Training rows: {model_summary.get('training_row_count')}")
         metrics = model_summary.get("metrics")
         if isinstance(metrics, pd.DataFrame) and not metrics.empty:
             st.dataframe(metrics, width="stretch", hide_index=True)
+        excluded = model_summary.get("features_excluded")
+        if isinstance(excluded, pd.DataFrame) and not excluded.empty:
+            st.markdown("#### Features excluded")
+            st.dataframe(excluded, width="stretch", hide_index=True)
         importance = model_summary.get("feature_importance")
         if isinstance(importance, pd.DataFrame) and not importance.empty:
             st.markdown("#### Feature importance")

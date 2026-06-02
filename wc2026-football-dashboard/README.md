@@ -124,9 +124,44 @@ Recommended historical tournaments:
 - World Cup 2018
 - World Cup 2022
 
-## How To Enable The Supervised Expected-Impact Model
+## Supervised Expected-Impact Model Modes
 
-The current project uses the transparent baseline fallback because the real historical target rows now exist, but the required real pre-tournament predictor values are not complete enough to train a supervised model.
+The project now supports three honest model modes:
+
+1. `limited_historical_context_model`
+
+   MVP supervised model trained on real World Cup-derived historical features only:
+
+   - age
+   - position
+   - previous World Cup minutes
+   - previous World Cup matches
+   - previous World Cup impact score when available
+   - debutant status
+   - group difficulty proxy when available
+   - tournament year
+
+   This is real supervised learning on historical player-tournament rows and `actual_tournament_impact_score`, but it is deliberately labelled as limited because rich recruitment predictors are not yet available historically.
+
+2. `full_recruitment_model`
+
+   Preferred future model once enriched real pre-tournament predictors are available:
+
+   - market values
+   - club-season minutes, goals and assists
+   - club and league strength
+   - senior caps
+   - availability, recent form and role fit
+
+3. `baseline_fallback`
+
+   Transparent weighted baseline used only if neither supervised model can train.
+
+The model uses sklearn pipelines with `SimpleImputer`, `OneHotEncoder`, and model-specific preprocessing. Imputation happens only inside the model pipeline for missing real values; it does not write fabricated values into source CSVs.
+
+## How To Enable The Full Recruitment Model
+
+The current project can train the limited historical context model from collected real World Cup data. To enable the full recruitment model:
 
 To enable the supervised model:
 
@@ -152,9 +187,9 @@ python scripts/validate_project.py
 python scripts/refresh_data.py
 ```
 
-7. Run the app. The Model tab will show the supervised expected-impact model as available once training succeeds.
+7. Run the app. The Model tab will show whether the limited or full supervised model is active.
 
-No synthetic rows are used. If target rows are missing, the model is disabled because historical target data is missing. If target rows exist but real pre-tournament predictor coverage is too thin, the model is disabled because predictor coverage is insufficient. Once real enrichment reaches the thresholds, the model activates automatically.
+No synthetic rows are used. If target rows are missing, the model is disabled because historical target data is missing. If rich predictor coverage is too thin, the app uses the limited supervised historical model where possible and clearly labels it as an MVP model.
 
 ## Historical Data Collection
 
@@ -193,7 +228,7 @@ The historical file includes a simple real-data-derived `national_team_strength`
 
 Fields still missing from the open source include club, league, assists, pre-tournament market value, club-season minutes, club-season goals/assists, senior national-team caps, injury availability and tactical role fit. These remain null and are not fabricated.
 
-Because several required pre-tournament predictor fields are still not populated, the supervised model remains disabled after this collection. To enable the model, join or manually curate compliant real pre-tournament feature exports into `data/historical/world_cup_player_training_data.csv`, then run:
+Because rich recruitment predictors are still not populated, the full recruitment model is not available yet. The limited historical context model can still train on the real World Cup-derived features. To enrich toward the full model, join or manually curate compliant real pre-tournament feature exports into `data/historical/world_cup_player_training_data.csv`, then run:
 
 ```bash
 python scripts/check_model_readiness.py
@@ -223,7 +258,7 @@ python scripts/validate_project.py
 
 The enrichment script uses exact `tournament_year + player_name` matching only. It rejects duplicate keys, requires provenance for supplied values, updates only non-null fields, and does not fuzzy-match or fabricate missing values.
 
-The supervised model requires at least 60% real non-null coverage for each required predictor before it can train. `scripts/check_model_readiness.py` reports non-null counts, percentages, distinct values and whether each feature is usable.
+`scripts/check_model_readiness.py` reports which mode can train, which features are used, and which features are excluded due to missingness, low coverage or no variation.
 
 ## Actual Tournament Data Requirements
 
@@ -266,6 +301,12 @@ expected_impact_source = supervised_historical_model
 
 The model is trained on player-tournament observations, not on repeated appearances by the same players. This lets it generalise from historical player profiles to new 2026 players, including players who have never appeared at a World Cup.
 
+If the active mode is `limited_historical_context_model`, the dashboard shows:
+
+```text
+Expected impact is generated by a limited supervised historical model trained on real World Cup-derived features. Rich recruitment predictors such as market value and club-season stats are not yet available for historical training, so this should be treated as an MVP model.
+```
+
 ## Handling World Cup Debutants
 
 Many young value targets may be playing their first World Cup. This is expected, not a data problem.
@@ -276,7 +317,7 @@ The Breakout Candidates tab is designed for young first-time or low-experience p
 
 ## Historical Model Status
 
-The current blocker is not the absence of historical World Cup target rows. Those rows exist. The supervised model remains disabled until real pre-tournament predictor coverage is sufficient.
+The current model status should be interpreted by mode.
 
 Possible statuses:
 
@@ -285,28 +326,26 @@ Historical World Cup target data is missing. The supervised model is disabled un
 ```
 
 ```text
-Historical target data is available, but the supervised model is disabled because real pre-tournament predictor coverage is insufficient.
+Supervised model active: limited historical context model.
 ```
 
 ```text
-Supervised expected-impact model is enabled and trained on real historical player-tournament data.
+Supervised model active: full recruitment model.
 ```
-
-When disabled due to insufficient predictor coverage, the app returns:
 
 ```text
-model_available = False
-model_status = disabled_missing_real_pre_tournament_features
+Supervised model disabled: using transparent baseline fallback.
 ```
 
-The model turns on only after:
+Minimum supervised training requirements:
 
 ```text
 minimum_training_rows = 300
 minimum_required_predictor_coverage = 0.60
+minimum usable real predictor features = 3
 ```
 
-The readiness check also requires real player context, team/tournament context, World Cup experience signals and at least three usable recruitment/pre-tournament predictors. Do not use synthetic values to force activation.
+The full model requires enough real recruitment/pre-tournament predictors. The limited model does not require unavailable market values, club-season stats, caps or injury data.
 
 If the current player dataset has the required baseline fields, expected impact falls back to:
 
@@ -412,14 +451,14 @@ wc2026-football-dashboard/
 
 ## Limitations
 
-- The supervised expected-impact model is disabled until real curated historical World Cup player data is provided.
+- The active supervised model is currently the limited historical context model; the full recruitment model still needs richer real historical pre-tournament predictors.
 - Actual impact validation remains pending until real 2026 World Cup match rows are added.
-- Baseline expected impact is transparent triage logic, not a trained model.
+- Baseline expected impact is transparent triage logic used only if supervised modelling cannot train.
 - Market values and availability signals depend on the quality and refresh cadence of the real CSV inputs.
 
 ## Future Improvements
 
-- Add a curated 2014/2018/2022 historical training dataset.
+- Enrich the curated 2014/2018/2022 historical training dataset with real market, club-season, caps, availability, form and role-fit predictors.
 - Add uncertainty intervals around expected impact.
 - Add downloadable scouting reports.
 - Add club-specific positional needs and squad-depth constraints.

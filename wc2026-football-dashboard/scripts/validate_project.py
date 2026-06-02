@@ -16,7 +16,7 @@ if str(SRC_PATH) not in sys.path:
 from data_pipeline import check_data_availability, load_processed_data
 from data_sources import DATA_SOURCE_SPECS, HISTORICAL_DATA_DIR, HISTORICAL_TRAINING_TEMPLATE_PATH
 from model import check_historical_model_readiness
-from model import TARGET_DATA_MISSING_WARNING
+from model import MODEL_MODE_LIMITED, TARGET_DATA_MISSING_WARNING
 
 
 VALID_OUTCOMES = {"Pending", "Overperformed", "Met expectations", "Underperformed"}
@@ -27,6 +27,7 @@ SCORE_COLUMNS = [
     "value_efficiency_score",
     "value_opportunity_score",
     "breakout_candidate_score",
+    "model_confidence_score",
     "availability_score",
     "risk_score",
 ]
@@ -170,7 +171,9 @@ def validate_historical_model_readiness(rows: list[ReportRow]) -> None:
         for error in readiness["errors"]:
             add(rows, "FAIL", "Historical model", str(error))
     elif readiness["can_train"]:
-        add(rows, "PASS", "Historical model", "Historical training data appears ready for supervised modelling.")
+        mode = str(readiness.get("selected_model_mode", "unknown"))
+        level = "WARN" if mode == MODEL_MODE_LIMITED else "PASS"
+        add(rows, level, "Historical model", f"Supervised model can train in mode: {mode}.")
     else:
         add(rows, "WARN", "Historical model", str(readiness["disabled_reason"]))
 
@@ -203,7 +206,7 @@ def validate_historical_model_readiness(rows: list[ReportRow]) -> None:
             rows,
             "WARN",
             "Historical model",
-            "Unavailable activation predictor values: " + ", ".join(str(col) for col in missing_feature_values),
+            "Future full-model enrichment values unavailable: " + ", ".join(str(col) for col in missing_feature_values),
         )
     below_coverage = readiness.get("required_features_below_minimum_coverage", [])
     if below_coverage and readiness["row_count"] > 0:

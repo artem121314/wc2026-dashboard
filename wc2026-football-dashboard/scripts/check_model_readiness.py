@@ -13,7 +13,6 @@ SRC_PATH = PROJECT_ROOT / "src"
 if str(SRC_PATH) not in sys.path:
     sys.path.insert(0, str(SRC_PATH))
 
-from model import PREDICTOR_COVERAGE_WARNING
 from model import check_historical_model_readiness
 from model import historical_feature_availability
 from model import load_historical_training_data
@@ -58,6 +57,9 @@ def main() -> int:
     print(f"Minimum required predictor coverage: {readiness.get('minimum_required_predictor_coverage')}")
     print(f"Activation predictor values complete: {_yes_no(readiness['required_feature_values_present'])}")
     print(f"Predictor coverage sufficient: {_yes_no(readiness.get('predictor_coverage_sufficient'))}")
+    print(f"Full recruitment model available: {_yes_no(readiness.get('full_recruitment_model_available'))}")
+    print(f"Limited historical context model available: {_yes_no(readiness.get('limited_historical_context_model_available'))}")
+    print(f"Model mode selected: {readiness.get('selected_model_mode')}")
     print(f"Activation status: {readiness.get('activation_status')}")
     missing_groups = readiness.get("missing_predictor_groups", [])
     if missing_groups:
@@ -86,10 +88,16 @@ def main() -> int:
     model_summary = readiness.get("model_summary")
     if isinstance(model_summary, dict) and model_summary.get("model_available"):
         print(f"Selected model: {model_summary.get('selected_model_name')}")
+        print(f"Model mode: {model_summary.get('model_mode')}")
+        print("Features used: " + ", ".join(str(feature) for feature in model_summary.get("features_used", [])))
         metrics = model_summary.get("metrics")
         if isinstance(metrics, pd.DataFrame) and not metrics.empty:
             print("Model metrics:")
             print(metrics.to_string(index=False))
+        excluded = model_summary.get("features_excluded")
+        if isinstance(excluded, pd.DataFrame) and not excluded.empty:
+            print("Features excluded:")
+            print(excluded.to_string(index=False))
 
     historical_data = load_historical_training_data()
     if not historical_data.empty:
@@ -119,16 +127,19 @@ def main() -> int:
             print(f"  - {error}")
     print("Conclusion:")
     if readiness.get("model_available"):
-        selected = None
+        mode = str(readiness.get("selected_model_mode"))
         if isinstance(model_summary, dict):
-            selected = model_summary.get("selected_model_name")
-        print(f"  MODEL ENABLED: enough real predictor coverage exists. Selected model: {selected or 'available'}.")
+            mode = str(model_summary.get("model_mode", mode))
+        if mode == "full_recruitment_model":
+            print("  MODEL ENABLED: full recruitment model")
+        elif mode == "limited_historical_context_model":
+            print("  MODEL ENABLED: limited historical context model")
+        else:
+            print(f"  MODEL ENABLED: {mode}")
     elif readiness.get("target_available_rows", 0) == 0:
-        print("  MODEL DISABLED: historical player-tournament target rows are missing.")
-    elif readiness.get("disabled_reason") == PREDICTOR_COVERAGE_WARNING or readiness.get("missing_predictor_groups"):
-        print("  MODEL DISABLED: target rows exist, but market/club-season predictor coverage is insufficient.")
+        print("  MODEL DISABLED: baseline fallback only")
     else:
-        print(f"  MODEL DISABLED: {readiness.get('disabled_reason', 'historical data is not ready')}")
+        print("  MODEL DISABLED: baseline fallback only")
     print("=" * 52)
     return 1 if errors else 0
 

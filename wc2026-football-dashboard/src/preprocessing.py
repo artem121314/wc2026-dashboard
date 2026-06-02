@@ -113,6 +113,9 @@ def clean_player_data(df: pd.DataFrame) -> pd.DataFrame:
         "injury_source_url",
         "market_value_source",
         "model_expected_impact_source",
+        "expected_impact_model_mode",
+        "expected_impact_model_features_used",
+        "expected_impact_model_warning",
         "expected_impact_source",
         "model_warning",
         "performance_outcome",
@@ -171,21 +174,29 @@ def clean_player_data(df: pd.DataFrame) -> pd.DataFrame:
 def apply_expected_impact_model(df: pd.DataFrame) -> pd.DataFrame:
     """Apply historical expected-impact model when available, otherwise baseline."""
 
-    from model import predict_expected_impact, train_expected_impact_model
+    from model import MODEL_MODE_BASELINE, model_feature_completeness, predict_expected_impact, train_expected_impact_model
 
     df = df.copy()
     model_summary = train_expected_impact_model()
     df["pre_tournament_expected_impact_score"] = predict_expected_impact(df, model_summary)
+    model_mode = str(model_summary.get("model_mode", MODEL_MODE_BASELINE))
+    model_features_used = str(model_summary.get("expected_impact_model_features_used", ""))
+    model_warning = str(model_summary.get("expected_impact_model_warning", model_summary.get("warning", "")))
+    df["expected_impact_model_mode"] = model_mode
+    df["expected_impact_model_features_used"] = model_features_used
+    df["expected_impact_model_warning"] = model_warning
     if model_summary.get("model_available"):
-        df["model_expected_impact_source"] = "historical_model"
+        df["model_expected_impact_source"] = model_mode
         df["expected_impact_source"] = "supervised_historical_model"
-        df["model_warning"] = ""
+        df["model_warning"] = model_warning
+        df["model_confidence_score"] = model_feature_completeness(df, model_summary)
     else:
         baseline_available = df["baseline_expected_impact_score"].notna()
-        df["model_expected_impact_source"] = "disabled"
+        df["model_expected_impact_source"] = MODEL_MODE_BASELINE
         df["expected_impact_source"] = "unavailable_missing_features"
         df.loc[baseline_available, "expected_impact_source"] = "transparent_baseline_fallback"
         df["model_warning"] = str(model_summary.get("warning", ""))
+        df["model_confidence_score"] = pd.NA
     df["historical_model_available"] = bool(model_summary.get("model_available", False))
     df["model_status"] = str(model_summary.get("model_status", "unknown"))
     return df

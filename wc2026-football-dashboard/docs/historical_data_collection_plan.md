@@ -171,7 +171,19 @@ The initial `actual_tournament_impact_score` is a transparent 0-100 target built
 
 Each component is percentile-ranked within broad position groups, then converted to a final position-adjusted percentile score. Assists are not included in the first target because the selected public source does not provide them. This is a practical MVP target, not a final definition of player impact.
 
-Because the current collection does not yet include the required real pre-tournament recruitment features, the supervised expected-impact model should remain disabled after collection. The collected target rows are still valuable: they create the real outcome table that future pre-tournament features can be joined onto.
+The current collection is sufficient for the `limited_historical_context_model`, which is the MVP supervised model. It trains on real World Cup-derived context and experience features rather than fabricated recruitment inputs.
+
+The richer `full_recruitment_model` remains unavailable until compliant real pre-tournament recruitment features are added. The collected target rows are still the foundation for that richer model because future market, club-season, caps, availability and role-fit exports can be joined onto the same player-tournament rows.
+
+## Model Modes
+
+| Mode | When Used | Features |
+| --- | --- | --- |
+| `limited_historical_context_model` | Real World Cup target rows and at least three usable real historical context predictors exist. | Age, position, prior World Cup minutes/matches/impact, debutant status, group difficulty, tournament year and other World Cup-derived context features where usable. |
+| `full_recruitment_model` | Rich real pre-tournament recruitment predictors have enough coverage. | Market value, club-season performance, club/league strength, caps, availability, recent form and role fit. |
+| `baseline_fallback` | No supervised mode can train. | Transparent manually weighted current-player baseline only. |
+
+The limited model is not perfect, but it is real supervised learning trained on real historical player-tournament rows and actual tournament impact outcomes.
 
 ## Compliant Source Options
 
