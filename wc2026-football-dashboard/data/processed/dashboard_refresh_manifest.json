@@ -1,5 +1,5 @@
 {
-  "last_refresh_utc": "2026-06-02T14:13:05.727174+00:00",
+  "last_refresh_utc": "2026-06-02T14:48:10.690589+00:00",
   "processed_path": "/Users/artyomshpet/Documents/New project/wc2026-football-dashboard/data/processed/player_dashboard_data.csv",
   "rows": 1247,
   "missing_market_values": 0,
@@ -69,10 +69,10 @@
       "name": "Historical training data",
       "path": "/Users/artyomshpet/Documents/New project/wc2026-football-dashboard/data/historical/world_cup_player_training_data.csv",
       "exists": true,
-      "rows": 0,
+      "rows": 2303,
       "missing_columns": [],
-      "available": false,
-      "status": "empty",
+      "available": true,
+      "status": "available",
       "required_for_refresh": false,
       "description": "Real curated 2014/2018/2022 player-level training data."
     },

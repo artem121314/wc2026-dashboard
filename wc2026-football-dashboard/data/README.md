@@ -52,6 +52,14 @@ The historical training file should use player-tournament observations. Each row
 
 The model does not require a 2026 player to have appeared at a previous World Cup. Previous World Cup experience fields are optional model signals only. If real curated historical data includes them, the supervised model can use them; if not, the model trains from the available player-profile, role, team-context and performance features.
 
+The first real historical target collection can be run with:
+
+```bash
+python scripts/collect_historical_data.py
+```
+
+This writes real player-tournament rows from the public Fjelstul/DataHub World Cup CSV tables and creates `data/historical/source_audit_log.csv`. It does not fabricate unavailable fields. The current source supports tournament output fields such as minutes, starts, goals, goalkeeper clean sheets and cards, but does not provide club, market values, assists or club-season pre-tournament inputs. Those fields remain blank until a compliant export is added.
+
 ## Tournament Updates
 
 To update live tournament validation:

@@ -42,6 +42,10 @@ def main() -> int:
     print(f"Target range valid: {readiness['target_valid_range']}")
     if readiness.get("score_range_issues"):
         print("Score range issues: " + ", ".join(str(col) for col in readiness["score_range_issues"]))
+    print(f"Required pre-tournament feature values present: {readiness['required_feature_values_present']}")
+    missing_features = readiness.get("missing_required_feature_values", [])
+    if missing_features:
+        print("Missing required pre-tournament feature values: " + ", ".join(str(col) for col in missing_features))
     print(f"Can train supervised model: {readiness['can_train']}")
     print(f"Supervised model available: {readiness['model_available']}")
     print(f"Model status: {readiness['model_status']}")

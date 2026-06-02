@@ -151,6 +151,42 @@ python scripts/refresh_data.py
 
 No synthetic rows are used. If the historical file is missing, empty, malformed, or too small to train, the supervised model remains disabled and the dashboard continues to label expected impact as a baseline fallback.
 
+## Historical Data Collection
+
+The project includes a real-data collection script for the first historical target table:
+
+```bash
+python scripts/collect_historical_data.py
+```
+
+Current implemented source:
+
+- [Fjelstul World Cup Database](https://github.com/jfjelstul/worldcup), accessed through the [DataHub World Cup CSV dataset](https://datahub.io/football/worldcup)
+- License: CC-BY-SA 4.0, with attribution and share-alike requirements
+- Fields collected: squads, player birth dates, player appearances, starts, goals, substitutions, bookings, matches and clean-sheet context
+- Years collected: World Cup 2014, 2018 and 2022
+
+The collector writes:
+
+```text
+data/historical/world_cup_player_training_data.csv
+data/historical/source_audit_log.csv
+```
+
+The first `actual_tournament_impact_score` is an MVP target built only from real tournament output. Outfield players are scored from tournament minutes, starts and goals. Goalkeepers are scored from tournament minutes, starts and clean sheets. Scores are percentile-adjusted within broad position groups and scaled 0-100.
+
+Fields still missing from the open source include club, league, assists, pre-tournament market value, club-season minutes, club-season goals/assists, injury availability, tactical role fit and national-team context. These remain null and are not fabricated.
+
+Because those pre-tournament predictor fields are not yet populated, the supervised model remains disabled after this initial collection. To enable the model, join or manually curate compliant real pre-tournament feature exports into `data/historical/world_cup_player_training_data.csv`, then run:
+
+```bash
+python scripts/check_model_readiness.py
+python scripts/validate_project.py
+python scripts/refresh_data.py
+```
+
+The source audit log records every dataset used and rejected. Restricted providers such as Opta, WhoScored, Wyscout and direct Transfermarkt page scraping are not used.
+
 ## Actual Tournament Data Requirements
 
 `data/raw/tournament_match_data.csv` should contain real match-level rows:
@@ -293,6 +329,7 @@ wc2026-football-dashboard/
 │   └── historical_data_collection_plan.md
 ├── notebooks/
 ├── scripts/
+│   ├── collect_historical_data.py
 │   ├── check_model_readiness.py
 │   ├── refresh_data.py
 │   └── validate_project.py

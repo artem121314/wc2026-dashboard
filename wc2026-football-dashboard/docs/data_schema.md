@@ -189,6 +189,15 @@ Use `data/historical/world_cup_player_training_data_template.csv` as the schema-
 | `injury_availability_score` | Pre-tournament availability score scaled 0-100. | Yes | number | 95.0 | modelling |
 | `recent_form_score` | Pre-tournament form score scaled 0-100. | Yes | number | 70.0 | modelling |
 | `role_fit_score` | Tactical/role fit score scaled 0-100. | Yes | number | 74.0 | modelling |
+| `minutes_at_tournament` | Real tournament minutes from the historical source. | Optional | number | 534 | target construction |
+| `starts_at_tournament` | Real tournament starts from the historical source. | Optional | number | 6 | target construction |
+| `appearances_at_tournament` | Real tournament appearances from the historical source. | Optional | number | 7 | target construction |
+| `substitute_appearances_at_tournament` | Real substitute appearances from the historical source. | Optional | number | 1 | target construction |
+| `goals_at_tournament` | Real tournament goals, excluding own goals where source supports it. | Optional | number | 3 | target construction |
+| `assists_at_tournament` | Real tournament assists if a compliant source provides them. | Optional | number | 2 | target construction |
+| `clean_sheets_at_tournament` | Real goalkeeper clean sheets where match result context is available. | Optional | number | 3 | target construction |
+| `yellow_cards_at_tournament` | Real yellow-card count if source provides bookings. | Optional | number | 1 | audit, target context |
+| `red_cards_at_tournament` | Real sending-off count if source provides bookings. | Optional | number | 0 | audit, target context |
 | `actual_tournament_impact_score` | Real position-adjusted historical tournament impact target scaled 0-100. | Yes | number | 68.0 | modelling target |
 | `is_world_cup_debutant` | Whether the player was a World Cup debutant for that tournament. | Optional | boolean | true | optional modelling |
 | `previous_world_cup_minutes` | Player's World Cup minutes before that tournament. | Optional | number | 0 | optional modelling |
@@ -197,6 +206,24 @@ Use `data/historical/world_cup_player_training_data_template.csv` as the schema-
 | `senior_national_team_caps` | Senior national-team caps before that tournament if available separately from `national_team_caps`. | Optional | number | 34 | optional modelling |
 | `major_tournament_experience` | Real count or score for major tournament experience before that tournament. | Optional | number | 4 | optional modelling |
 | `age_group` | Age group before the tournament. Can be derived from real `age`. | Optional | string | U23 | optional modelling |
+| `data_source` | Human-readable source used for the row. | Optional | string | Fjelstul World Cup Database via DataHub | audit |
+| `data_source_url` | URL or local path for the row's source. | Optional | string | https://datahub.io/football/worldcup | audit |
+
+## `data/historical/source_audit_log.csv`
+
+Every source used by the historical collector must be documented. Candidate sources that were rejected can also be recorded for transparency.
+
+| Column | Description | Required | Type | Example | Used for |
+| --- | --- | --- | --- | --- | --- |
+| `source_name` | Source or candidate-source name. | Yes | string | Fjelstul World Cup Database via DataHub | audit |
+| `source_url_or_location` | Public URL or local path. | Yes | string | https://datahub.io/football/worldcup | audit |
+| `source_type` | Public/open, manually curated, licensed export, or rejected source type. | Yes | string | public/open CSV dataset | audit |
+| `license_or_usage_note` | License or usage note reviewed before use. | Yes | string | CC-BY-SA 4.0 | audit |
+| `access_method` | How the source was accessed. | Yes | string | Direct CSV download | audit |
+| `date_accessed` | Date the source was accessed. | Yes | date | 2026-06-02 | audit |
+| `fields_used` | Fields or tables used from the source. | Yes | string | squads, players, matches | audit |
+| `allowed_for_project` | Whether the source is permitted for this project. | Yes | boolean | true | audit |
+| `notes` | Additional provenance, limitation, or rejection notes. | Optional | string | Market values not provided | audit |
 
 ## `data/processed/player_dashboard_data.csv`
 

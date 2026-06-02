@@ -67,6 +67,24 @@ REQUIRED_HISTORICAL_COLUMNS = [
     "actual_tournament_impact_score",
 ]
 
+REQUIRED_MODEL_VALUE_COLUMNS = [
+    "age",
+    "position",
+    "market_value_before_tournament",
+    "club_level_score",
+    "league_strength_score",
+    "club_minutes_previous_season",
+    "goals_previous_season",
+    "assists_previous_season",
+    "national_team_caps",
+    "expected_starter_score",
+    "national_team_strength",
+    "group_difficulty_score",
+    "injury_availability_score",
+    "recent_form_score",
+    "role_fit_score",
+]
+
 EXPECTED_HISTORICAL_TOURNAMENT_YEARS = {2014, 2018, 2022}
 MIN_HISTORICAL_TRAINING_ROWS = 30
 HISTORICAL_SCORE_COLUMNS = [
@@ -122,6 +140,16 @@ def _read_historical_file_with_columns(path: Path | str) -> pd.DataFrame:
         return pd.DataFrame()
 
 
+def missing_required_model_feature_values(data: pd.DataFrame) -> list[str]:
+    """Return required model feature columns that contain no real values."""
+
+    missing_values: list[str] = []
+    for col in REQUIRED_MODEL_VALUE_COLUMNS:
+        if col not in data.columns or data[col].notna().sum() == 0:
+            missing_values.append(col)
+    return missing_values
+
+
 def check_historical_model_readiness(
     path: Path | str = HISTORICAL_TRAINING_PATH,
     template_path: Path | str = HISTORICAL_TRAINING_TEMPLATE_PATH,
@@ -144,6 +172,8 @@ def check_historical_model_readiness(
         "target_available_rows": 0,
         "target_valid_range": False,
         "score_range_issues": [],
+        "required_feature_values_present": False,
+        "missing_required_feature_values": [],
         "can_train": False,
         "model_available": False,
         "model_status": MODEL_STATUS_DISABLED,
@@ -214,10 +244,20 @@ def check_historical_model_readiness(
     if target.nunique(dropna=True) < 2:
         readiness["warnings"].append("Target has fewer than two distinct values, so the model cannot learn a relationship.")
 
+    missing_feature_values = missing_required_model_feature_values(data)
+    readiness["missing_required_feature_values"] = missing_feature_values
+    readiness["required_feature_values_present"] = not missing_feature_values
+    if missing_feature_values:
+        readiness["warnings"].append(
+            "Historical rows are present, but required pre-tournament model feature values are missing: "
+            + ", ".join(missing_feature_values)
+        )
+
     no_errors = not readiness["errors"]
     enough_rows = len(data) >= MIN_HISTORICAL_TRAINING_ROWS
     enough_targets = readiness["target_available_rows"] >= MIN_HISTORICAL_TRAINING_ROWS and target.nunique(dropna=True) >= 2
-    readiness["can_train"] = bool(no_errors and enough_rows and enough_targets)
+    feature_values_ready = not missing_feature_values
+    readiness["can_train"] = bool(no_errors and enough_rows and enough_targets and feature_values_ready)
 
     if readiness["can_train"] and attempt_training:
         model_summary = train_expected_impact_model(data)
@@ -231,6 +271,11 @@ def check_historical_model_readiness(
             readiness["warnings"].append(readiness["disabled_reason"])
     elif readiness["can_train"]:
         readiness["disabled_reason"] = "Historical training data appears ready; training was not attempted."
+    elif missing_feature_values:
+        readiness["disabled_reason"] = (
+            "Historical training data is present but required real pre-tournament feature values are missing."
+        )
+        readiness["model_status"] = "disabled_missing_real_pre_tournament_features"
     elif not readiness["disabled_reason"] or readiness["disabled_reason"] == "Historical World Cup training data is missing.":
         readiness["disabled_reason"] = "Historical training data is present but not yet trainable."
 
@@ -457,6 +502,18 @@ def train_expected_impact_model(
         result["warning"] = (
             "Historical World Cup training data is present but does not contain enough valid target rows to train "
             "a supervised model."
+        )
+        result["training_row_count"] = int(len(training_data))
+        return result
+
+    missing_feature_values = missing_required_model_feature_values(training_data)
+    if missing_feature_values:
+        result = _empty_training_result(model_type)
+        result["model_status"] = "disabled_missing_real_pre_tournament_features"
+        result["warning"] = (
+            "Historical World Cup outcome rows are present, but these required real pre-tournament feature values "
+            "are missing: "
+            + ", ".join(missing_feature_values)
         )
         result["training_row_count"] = int(len(training_data))
         return result

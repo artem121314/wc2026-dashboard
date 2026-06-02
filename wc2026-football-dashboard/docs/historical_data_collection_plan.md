@@ -100,6 +100,53 @@ These columns are optional model signals. Missing previous World Cup experience 
 
 The target should be calculated from real tournament match data. If match data is incomplete, leave the target blank until it can be supported.
 
+## Initial Real Collection Layer
+
+The repository includes a compliant collection script:
+
+```bash
+python scripts/collect_historical_data.py
+```
+
+The first implemented source is the Fjelstul World Cup Database as republished by DataHub in CSV form. It is used because it provides real squad, appearance, match, goal, substitution, booking and player birth-date tables for the men's World Cup, including 2014, 2018 and 2022.
+
+The collector writes:
+
+```text
+data/historical/world_cup_player_training_data.csv
+data/historical/source_audit_log.csv
+```
+
+For this MVP collection, the available real fields support:
+
+- `player_name`
+- `tournament_year`
+- `country`
+- `position`
+- `age`
+- `minutes_at_tournament`
+- `starts_at_tournament`
+- `appearances_at_tournament`
+- `substitute_appearances_at_tournament`
+- `goals_at_tournament`
+- `clean_sheets_at_tournament`
+- `yellow_cards_at_tournament`
+- `red_cards_at_tournament`
+- `actual_tournament_impact_score`
+
+The same source does not provide club, league, assists, market value, club-season performance, injury availability, tactical fit or national-team context inputs. Those columns remain blank/null until a compliant source or manually curated export is added.
+
+## MVP Target Construction
+
+The initial `actual_tournament_impact_score` is a transparent 0-100 target built from real tournament output:
+
+- Outfield players: tournament minutes, starts and goals.
+- Goalkeepers: tournament minutes, starts and clean sheets.
+
+Each component is percentile-ranked within broad position groups, then converted to a final position-adjusted percentile score. Assists are not included in the first target because the selected public source does not provide them. This is a practical MVP target, not a final definition of player impact.
+
+Because the current collection does not yet include the required real pre-tournament recruitment features, the supervised expected-impact model should remain disabled after collection. The collected target rows are still valuable: they create the real outcome table that future pre-tournament features can be joined onto.
+
 ## Compliant Source Options
 
 The project should ingest CSV exports. Do not implement direct scraping from restricted football data providers.

@@ -14,7 +14,7 @@ if str(SRC_PATH) not in sys.path:
     sys.path.insert(0, str(SRC_PATH))
 
 from data_pipeline import check_data_availability, load_processed_data
-from data_sources import DATA_SOURCE_SPECS, HISTORICAL_TRAINING_TEMPLATE_PATH
+from data_sources import DATA_SOURCE_SPECS, HISTORICAL_DATA_DIR, HISTORICAL_TRAINING_TEMPLATE_PATH
 from model import check_historical_model_readiness
 
 
@@ -37,6 +37,18 @@ OPTIONAL_EXPERIENCE_FIELDS = [
     "previous_world_cup_impact_score",
     "senior_national_team_caps",
     "major_tournament_experience",
+]
+
+SOURCE_AUDIT_COLUMNS = [
+    "source_name",
+    "source_url_or_location",
+    "source_type",
+    "license_or_usage_note",
+    "access_method",
+    "date_accessed",
+    "fields_used",
+    "allowed_for_project",
+    "notes",
 ]
 
 
@@ -62,6 +74,7 @@ def validate_project_structure(rows: list[ReportRow]) -> None:
         "data/historical",
         "data/processed",
         "docs/historical_data_collection_plan.md",
+        "scripts/collect_historical_data.py",
         "scripts/check_model_readiness.py",
         "README.md",
         "requirements.txt",
@@ -118,6 +131,33 @@ def validate_source_files(rows: list[ReportRow]) -> None:
         add(rows, "WARN", "Data files", "Historical training template is missing.")
 
 
+def validate_source_audit_log(rows: list[ReportRow]) -> None:
+    audit_path = HISTORICAL_DATA_DIR / "source_audit_log.csv"
+    if not audit_path.exists():
+        add(rows, "WARN", "Source audit", "data/historical/source_audit_log.csv is missing. Run historical collection to create it.")
+        return
+    try:
+        audit = pd.read_csv(audit_path)
+    except pd.errors.EmptyDataError:
+        add(rows, "WARN", "Source audit", "source_audit_log.csv exists but is empty.")
+        return
+
+    missing_columns = [col for col in SOURCE_AUDIT_COLUMNS if col not in audit.columns]
+    if missing_columns:
+        add(rows, "FAIL", "Source audit", "source_audit_log.csv is missing columns: " + ", ".join(missing_columns))
+        return
+    if audit.empty:
+        add(rows, "WARN", "Source audit", "source_audit_log.csv has no rows.")
+        return
+
+    add(rows, "PASS", "Source audit", f"Source audit log loads with {len(audit):,} rows.")
+    allowed = audit["allowed_for_project"].astype(str).str.lower().isin(["true", "1", "yes"])
+    if allowed.any():
+        add(rows, "PASS", "Source audit", "At least one allowed source is documented.")
+    else:
+        add(rows, "WARN", "Source audit", "No allowed data source is documented in the audit log.")
+
+
 def validate_historical_model_readiness(rows: list[ReportRow]) -> None:
     readiness = check_historical_model_readiness(attempt_training=False)
     if readiness["row_count"] == 0:
@@ -129,6 +169,15 @@ def validate_historical_model_readiness(rows: list[ReportRow]) -> None:
         add(rows, "PASS", "Historical model", "Historical training data appears ready for supervised modelling.")
     else:
         add(rows, "WARN", "Historical model", str(readiness["disabled_reason"]))
+
+    missing_feature_values = readiness.get("missing_required_feature_values", [])
+    if missing_feature_values and readiness["row_count"] > 0:
+        add(
+            rows,
+            "WARN",
+            "Historical model",
+            "Missing required pre-tournament feature values: " + ", ".join(str(col) for col in missing_feature_values),
+        )
 
     years = readiness.get("tournament_years_available", [])
     if years:
@@ -227,6 +276,7 @@ def main() -> int:
     rows: list[ReportRow] = []
     validate_project_structure(rows)
     validate_source_files(rows)
+    validate_source_audit_log(rows)
     validate_historical_model_readiness(rows)
     validate_processed_data(rows)
     validate_imports(rows)
