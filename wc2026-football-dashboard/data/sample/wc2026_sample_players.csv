@@ -1,0 +1,261 @@
+player_name,country,club,league,age,position,minutes,national_team_strength,club_level_score,recent_form_score,expected_minutes_score,goals,assists,shots,key_passes,progressive_passes,progressive_carries,passes_into_final_third,carries_into_final_third,successful_dribbles,tackles,interceptions,aerial_duels_won,turnovers,through_balls,crosses_into_box,shot_creating_actions_proxy,shots_in_box,touches_in_box,pressures,recoveries,long_passes,saves,clean_sheets,pass_completion_pct,non_penalty_goals,aerial_threat,market_value_eur
+Alphonso Mbaye,Canada,Inter Miami,MLS,18,Attacking midfielder,3338,71.6,68.1,61.3,85.0,7,3,59,72,82,93,61,43,53,24,20,12,43,14,30,74,26,71,361,124,37,0,9,81.1,7,19,9451106
+Cole Diaz,Senegal,Aston Villa,Premier League,25,Central midfielder,2420,78.4,84.0,89.8,81.1,4,4,42,40,136,77,107,40,36,52,42,28,45,7,15,39,17,36,441,251,115,0,9,90.1,4,31,37766143
+Amadou Santos,France,AC Milan,Serie A,23,Goalkeeper,2119,96.8,82.7,58.8,65.6,0,0,0,0,99,0,25,0,1,3,1,5,2,1,0,1,0,0,9,60,172,114,7,84.4,0,5,12040927
+Ousmane Wirtz,Portugal,Tottenham,Premier League,29,Centre-back,1706,84.3,84.6,90.8,47.3,1,2,10,3,107,18,109,12,6,33,38,98,9,2,0,7,11,30,139,163,136,0,4,91.0,1,101,27570780
+Santiago Valverde,USA,Paris Saint-Germain,Ligue 1,27,Attacking midfielder,1186,71.8,92.5,86.3,26.6,2,3,29,36,33,42,23,26,25,9,4,5,24,5,7,22,8,32,167,58,14,0,3,72.5,2,7,12833373
+Jude Walker,USA,Monaco,Ligue 1,23,Attacking midfielder,240,76.8,77.8,54.2,18.0,0,0,4,1,5,9,6,3,2,6,2,0,2,1,1,3,0,7,22,10,3,0,2,81.1,0,0,5137224
+Min-jae Williams,Switzerland,Roma,Serie A,28,Forward,1954,77.6,74.5,69.7,36.5,5,3,47,8,18,26,12,16,19,7,0,32,20,0,3,9,40,79,197,39,10,0,2,75.5,5,44,5789969
+Florian Garcia,Denmark,Juventus,Serie A,23,Defensive midfielder,2000,80.3,86.5,78.8,54.6,0,0,8,17,83,24,77,13,6,43,39,22,18,1,1,15,2,14,238,129,74,0,5,88.4,0,22,9029837
+Min-jae Walker,Poland,AC Milan,Serie A,33,Forward,2838,72.5,85.0,88.9,69.4,15,3,81,27,25,43,35,27,21,18,11,48,45,1,8,26,64,149,450,124,14,0,3,80.2,15,63,21550118
+Julian Rodriguez,Uruguay,Arsenal,Premier League,28,Forward,2188,83.2,90.0,83.1,44.2,6,3,45,20,18,26,13,7,14,9,3,24,20,5,5,13,27,70,228,56,11,0,3,74.1,5,28,12739343
+Take Mbaye,Norway,Aston Villa,Premier League,23,Goalkeeper,1639,67.4,86.4,91.3,66.2,0,0,1,0,101,3,24,1,0,2,0,4,7,1,0,1,0,2,8,77,181,90,12,81.7,0,4,16484013
+Federico Ramos,Ghana,Atletico Madrid,LaLiga,31,Forward,2058,70.2,90.6,70.7,54.1,4,1,52,14,13,30,17,16,15,8,3,19,29,1,1,11,30,84,193,48,11,0,2,72.8,4,27,7272998
+Gabriel Osimhen,Morocco,Al Ahli,Saudi Pro League,22,Centre-back,3472,76.8,66.6,77.4,91.4,2,2,23,9,222,31,150,22,5,80,80,142,23,2,0,11,10,48,272,289,243,0,14,94.8,2,143,34465471
+Min-jae Smith,Egypt,Manchester City,Premier League,25,Centre-back,1469,72.5,97.6,85.8,25.9,1,0,9,2,93,19,86,7,2,34,33,53,6,2,1,2,13,22,82,127,107,0,4,92.0,1,55,32462798
+Joao Fernandez,Germany,Arsenal,Premier League,25,Central midfielder,1171,85.7,93.6,78.9,26.0,1,2,21,11,75,29,50,28,16,30,26,5,19,7,7,19,5,22,216,117,54,0,5,82.9,1,6,19653158
+Xavi Torres,Serbia,Marseille,Ligue 1,24,Goalkeeper,2268,73.4,80.6,81.8,57.3,0,0,0,0,140,2,41,0,3,3,3,3,8,0,0,8,0,2,10,112,253,111,11,82.0,0,3,29987798
+Nico Walker,Poland,Bayer Leverkusen,Bundesliga,23,Full-back,1804,71.9,90.8,76.5,49.3,0,1,12,10,52,43,49,20,11,35,29,19,24,4,47,19,6,28,232,103,56,0,4,76.9,0,20,13663548
+Min-jae Pulisic,Denmark,Feyenoord,Eredivisie,28,Centre-back,2736,80.4,73.1,77.1,65.7,1,1,15,2,120,25,96,9,2,38,59,98,18,0,1,7,11,27,163,195,160,0,8,88.2,1,100,13819429
+Hugo Ramos,Brazil,Roma,Serie A,28,Goalkeeper,2460,94.7,81.3,92.7,65.3,0,0,2,1,177,2,33,2,1,2,0,10,11,0,0,2,0,1,18,114,288,143,8,81.8,0,10,26133443
+Jude Tanaka,Brazil,Al Ahli,Saudi Pro League,23,Attacking midfielder,1440,88.7,68.5,81.4,45.2,4,1,15,26,28,27,30,13,15,15,9,1,18,3,11,25,16,25,125,30,11,0,0,79.6,4,4,4047982
+Santiago Diaz,Croatia,Aston Villa,Premier League,26,Attacking midfielder,413,81.6,82.6,86.8,18.0,1,2,7,8,11,7,6,10,12,6,4,1,12,4,5,12,7,13,61,28,17,0,1,80.2,1,3,10485582
+Florian Kim,Germany,Feyenoord,Eredivisie,17,Defensive midfielder,1526,92.1,77.2,81.6,32.5,1,0,21,18,96,33,70,16,7,48,36,28,16,3,7,23,7,14,257,137,87,0,4,90.5,1,29,10342524
+Lucas Muller,Brazil,Bayer Leverkusen,Bundesliga,27,Winger,2083,92.4,91.1,93.9,74.5,6,5,73,40,62,135,50,77,54,16,11,15,49,6,65,70,32,105,434,110,44,0,4,76.5,5,22,47052582
+Take Kim,USA,Juventus,Serie A,24,Forward,1118,81.1,87.8,74.5,41.4,8,3,60,10,12,27,10,10,14,12,2,34,17,3,5,18,40,91,217,49,16,0,7,75.2,8,46,30344325
+Lucas Osimhen,Switzerland,Tottenham,Premier League,24,Defensive midfielder,2210,78.2,88.3,81.7,54.1,2,3,16,15,111,29,77,16,7,56,47,34,20,3,10,13,4,22,272,161,90,0,6,90.4,2,34,15983190
+Leo Garcia,Ghana,Feyenoord,Eredivisie,31,Central midfielder,1126,69.3,70.6,98.0,27.2,3,2,23,14,68,31,56,22,16,29,21,14,17,3,2,18,2,23,224,96,62,0,6,79.5,3,14,7906189
+Santiago Wirtz,Spain,Eintracht Frankfurt,Bundesliga,17,Goalkeeper,1412,87.6,72.5,90.5,42.6,0,0,0,0,65,5,10,0,0,2,1,3,1,0,0,2,0,1,11,39,111,85,6,77.0,0,3,3323821
+Mohamed Diaz,France,Inter Miami,MLS,22,Attacking midfielder,1872,92.3,66.9,95.7,64.3,4,4,48,34,54,62,60,30,47,26,12,8,37,5,20,65,28,60,305,109,30,0,4,81.5,4,16,30027915
+Tyler Palmer,Uruguay,Lyon,Ligue 1,28,Centre-back,1657,78.5,70.6,77.3,40.8,0,0,10,3,116,21,83,6,0,33,36,69,12,2,0,4,5,28,137,157,138,0,9,87.3,0,70,11708881
+Gabriel Diaz,South Korea,Napoli,Serie A,25,Centre-back,1248,73.5,81.9,96.8,33.0,0,0,8,1,75,12,41,7,2,27,34,45,14,1,0,2,5,5,93,76,100,0,3,89.3,0,46,17368466
+Santiago Benali,Argentina,Marseille,Ligue 1,24,Attacking midfielder,1733,92.3,75.5,86.7,38.9,6,7,59,63,98,99,68,42,56,41,14,10,50,13,26,64,34,82,418,146,61,0,1,78.0,6,18,51253340
+Mohamed Diop,South Korea,Liverpool,Premier League,34,Centre-back,1626,74.8,90.6,75.7,41.7,0,0,12,2,102,20,68,7,4,31,37,61,9,2,0,8,7,15,126,115,124,0,5,90.6,0,62,13801202
+Mohamed Santos,Switzerland,AZ Alkmaar,Eredivisie,31,Centre-back,2328,79.2,68.8,71.7,67.0,4,1,12,4,122,19,80,8,0,37,39,92,7,2,0,10,6,27,144,134,172,0,9,94.2,4,93,11605814
+Mason Palmer,Turkey,Marseille,Ligue 1,22,Winger,516,74.6,74.4,81.7,18.0,2,3,14,12,17,34,12,14,14,4,2,5,7,2,18,18,9,32,91,22,5,0,1,78.0,2,7,14566798
+Victor Musiala,Argentina,Lyon,Ligue 1,24,Full-back,1761,88.4,66.9,69.6,51.0,0,1,19,20,68,51,41,29,13,30,24,18,20,2,40,15,2,29,233,99,58,0,3,86.0,0,18,11329215
+Mason Davies,Spain,Manchester City,Premier League,24,Goalkeeper,1118,88.0,94.8,98.0,37.1,0,0,0,2,84,1,19,0,0,1,1,5,3,0,0,3,0,1,4,67,148,49,7,77.0,0,5,17712700
+Youssef Wirtz,South Korea,Barcelona,LaLiga,22,Central midfielder,1148,71.6,92.2,81.5,39.8,0,0,12,8,54,21,38,18,7,26,22,9,13,2,4,14,5,15,129,66,39,0,5,88.6,0,10,9517220
+Hugo Rodriguez,England,Sao Paulo,Brasileirao,27,Winger,2433,90.5,64.7,89.0,74.3,6,9,87,39,56,132,47,58,75,26,20,8,71,4,52,55,26,109,391,110,41,0,3,78.5,6,14,34792611
+Xavi Palmer,Denmark,Paris Saint-Germain,Ligue 1,21,Winger,1684,77.6,93.0,85.3,37.0,3,5,59,48,45,112,34,58,70,22,14,11,54,7,53,50,28,91,363,109,33,0,4,73.3,3,20,61398916
+Min-jae Benali,Senegal,Manchester United,Premier League,29,Centre-back,1762,75.4,81.4,75.4,36.4,1,0,10,0,72,11,40,9,1,21,23,53,16,1,0,2,10,14,87,96,77,0,1,87.7,1,55,9185975
+Gabriel Torres,Morocco,Barcelona,LaLiga,26,Central midfielder,1429,78.4,92.5,92.0,32.2,0,3,40,22,96,54,78,30,20,34,25,26,27,6,7,34,11,18,303,159,79,0,10,85.8,0,28,39168404
+Gabriel Pereira,Portugal,Benfica,Primeira Liga,29,Full-back,1748,87.6,80.4,85.5,57.4,0,6,21,24,85,58,57,40,14,37,30,24,39,6,38,25,7,33,301,162,64,0,8,82.0,0,26,27993870
+Take Santos,England,Benfica,Primeira Liga,23,Centre-back,2041,87.4,78.5,98.0,53.4,1,2,25,2,174,35,103,9,3,32,62,90,25,3,2,8,13,35,184,240,229,0,8,89.4,1,94,63639063
+Mohamed Van Dijk,Portugal,Lyon,Ligue 1,19,Defensive midfielder,2135,86.1,75.5,74.6,55.7,0,3,7,7,56,22,48,9,7,41,20,14,20,1,2,14,1,7,207,89,64,0,0,89.1,0,14,5847106
+Enzo Costa,Australia,Athletic Club,LaLiga,29,Central midfielder,1157,75.1,75.9,84.6,21.8,2,1,15,14,52,21,54,13,8,19,16,10,19,6,4,17,6,14,175,90,49,0,5,83.3,2,11,7803240
+Min-jae Torres,Denmark,Real Madrid,LaLiga,24,Defensive midfielder,469,78.2,98.0,86.0,20.8,0,2,8,2,30,7,26,11,1,17,13,8,4,1,4,11,1,6,102,43,31,0,1,88.1,0,8,18380380
+Federico Van Dijk,Poland,Porto,Primeira Liga,24,Centre-back,987,77.4,73.2,83.1,31.5,0,0,6,1,46,11,44,4,1,17,14,33,6,1,2,2,5,11,54,63,58,0,3,88.2,0,34,10858034
+Declan Wirtz,Denmark,Newcastle United,Premier League,26,Attacking midfielder,1272,77.3,79.8,70.9,40.6,5,3,22,23,27,39,22,28,17,14,8,5,16,5,6,28,10,24,134,70,15,0,2,80.0,5,7,5433217
+Thiago Diaz,Brazil,Paris Saint-Germain,Ligue 1,27,Winger,2532,94.0,97.0,70.9,67.5,9,9,72,49,74,133,48,73,73,31,16,18,54,9,60,57,31,102,379,129,39,0,5,75.1,9,23,51895441
+Lamine Muller,Morocco,Benfica,Primeira Liga,17,Goalkeeper,2902,78.7,76.9,77.7,77.7,0,0,1,1,182,6,56,1,0,1,1,11,21,2,0,1,0,1,19,142,358,156,9,82.2,0,11,13642275
+Weston Musiala,Austria,Eintracht Frankfurt,Bundesliga,34,Goalkeeper,2817,78.7,71.2,85.3,72.7,0,0,0,3,150,4,35,0,0,2,3,4,13,0,0,5,0,1,10,114,311,158,17,78.5,0,4,8173493
+Enzo Benali,Portugal,Ajax,Eredivisie,30,Goalkeeper,2945,88.2,72.6,58.1,80.3,0,0,0,0,136,4,42,2,1,0,3,8,8,1,0,4,0,2,12,101,280,195,6,75.2,0,8,10434000
+Weston Walker,Austria,AC Milan,Serie A,23,Winger,1674,80.5,83.2,75.6,41.4,2,1,41,25,28,79,30,45,62,19,3,7,41,4,45,51,25,75,229,83,30,0,1,80.8,2,14,16204380
+Mason Kim,Nigeria,Borussia Dortmund,Bundesliga,30,Defensive midfielder,1728,81.3,84.3,88.3,58.1,2,5,28,19,100,33,79,19,8,48,43,25,21,5,2,18,7,30,274,165,100,0,5,90.9,2,26,14043744
+Victor Rice,Denmark,Atlanta United,MLS,25,Centre-back,1822,74.8,56.2,84.4,48.9,1,1,19,3,124,28,105,13,2,39,62,93,16,1,0,4,11,34,137,192,174,0,7,87.0,1,95,30308066
+Daichi Salah,France,LAFC,MLS,34,Forward,1069,96.7,56.3,81.3,30.1,5,1,31,6,10,23,8,9,10,6,2,12,19,4,2,12,16,56,127,26,4,0,1,72.4,5,17,2514654
+Take Palmer,France,Marseille,Ligue 1,31,Full-back,2202,91.5,69.8,72.9,64.3,0,7,31,34,119,90,87,48,22,52,42,39,50,5,61,36,8,51,399,223,101,0,13,81.6,0,40,22947090
+Kai Mbaye,Serbia,Fluminense,Brasileirao,27,Forward,1070,79.8,66.4,86.5,27.6,5,0,42,14,14,25,9,18,30,10,1,32,22,1,3,11,33,64,178,49,11,0,1,75.3,5,39,13002814
+Youssef Diaz,England,Porto,Primeira Liga,27,Central midfielder,1512,84.6,78.9,77.6,42.7,1,3,18,17,78,27,68,21,16,36,17,9,17,3,7,30,6,30,253,128,65,0,2,88.0,1,10,33878711
+Thiago Mbaye,Germany,Eintracht Frankfurt,Bundesliga,32,Central midfielder,1717,86.3,75.1,82.1,52.6,2,3,26,22,97,47,76,26,23,34,30,14,21,5,10,29,12,28,280,150,86,0,6,92.1,2,16,15880494
+Mason Pulisic,Nigeria,LAFC,MLS,31,Attacking midfielder,2248,75.0,62.1,88.3,72.6,6,7,65,60,67,94,70,57,51,29,22,15,53,21,23,95,30,90,378,145,49,0,8,81.7,6,24,31506106
+Lucas Alvarez,Croatia,Manchester United,Premier League,36,Attacking midfielder,1496,80.3,80.4,80.5,45.2,2,3,31,40,54,63,50,24,30,21,6,7,29,11,13,43,16,66,249,80,43,0,4,78.3,2,10,8341799
+Gabriel Fernandez,Norway,Arsenal,Premier League,26,Winger,3275,75.2,92.3,89.7,82.3,8,8,119,65,93,207,60,109,110,31,22,24,110,8,89,104,46,182,613,181,58,0,15,75.8,8,38,75921223
+Declan Osimhen,Brazil,Arsenal,Premier League,28,Defensive midfielder,2560,89.6,87.5,69.3,77.9,3,0,13,10,76,22,52,13,8,50,23,28,13,0,3,22,2,21,215,139,77,0,5,82.3,3,28,6766584
+Hugo Hakimi,Brazil,Porto,Primeira Liga,25,Centre-back,1901,86.4,84.2,73.1,65.0,2,0,14,6,115,27,74,4,3,36,33,83,17,2,0,8,4,30,106,126,155,0,8,91.9,2,83,18682164
+Amadou Davies,Morocco,Atletico Madrid,LaLiga,21,Forward,1033,82.4,90.2,83.7,36.8,8,2,45,4,15,14,11,15,14,5,1,23,28,1,3,15,35,54,203,34,4,0,5,75.8,8,33,29287006
+Nico Kone,Japan,Paris Saint-Germain,Ligue 1,22,Central midfielder,849,73.0,96.7,65.0,30.7,0,1,6,4,19,15,29,11,7,8,6,9,6,4,4,15,6,12,89,40,35,0,1,84.0,0,10,4244402
+Mason Muller,Colombia,Braga,Primeira Liga,24,Goalkeeper,3172,79.9,69.5,83.8,86.4,0,2,1,1,153,5,32,1,2,4,6,5,12,0,0,7,0,1,12,102,297,180,19,78.8,0,5,9890685
+Leo Wirtz,Senegal,Aston Villa,Premier League,24,Goalkeeper,1975,77.7,81.9,79.2,51.1,0,0,0,3,90,2,20,0,0,2,2,7,6,0,0,2,0,0,12,58,172,111,9,78.0,0,7,9687876
+Enzo Fernandez,Germany,Chelsea,Premier League,31,Full-back,2562,89.2,80.4,98.0,70.5,2,3,43,37,157,113,134,52,29,87,44,47,50,6,96,49,11,58,538,326,127,0,10,81.0,2,48,31492721
+Federico Santos,South Korea,Tottenham,Premier League,17,Central midfielder,2285,76.0,78.6,80.1,53.7,0,8,33,21,100,58,81,26,21,42,26,14,27,8,13,36,8,40,297,171,80,0,11,81.3,0,16,18959442
+Sofiane Diaz,France,Feyenoord,Eredivisie,28,Central midfielder,1568,91.2,68.6,80.3,35.4,1,3,23,16,69,32,62,16,8,27,26,8,16,4,5,24,9,23,192,99,46,0,6,86.6,1,9,10077347
+Jude Mbaye,Japan,Eintracht Frankfurt,Bundesliga,24,Forward,807,72.0,72.4,72.7,20.2,2,1,25,4,7,11,9,5,7,5,2,18,10,2,3,8,16,49,126,24,11,0,0,75.8,2,23,11162537
+Tyler Pulisic,Turkey,Al Nassr,Saudi Pro League,27,Forward,2894,68.8,71.5,83.2,76.2,8,6,95,21,23,60,22,29,31,27,7,49,46,1,11,22,64,161,455,100,28,0,2,81.1,8,64,29310496
+Joao Fernandez 2,Canada,Benfica,Primeira Liga,24,Winger,2866,68.9,79.5,89.7,80.8,8,7,79,37,63,153,48,52,71,27,13,14,63,6,58,54,35,111,397,105,45,0,6,79.1,8,26,36951128
+Alphonso Ramos,Switzerland,Villarreal,LaLiga,33,Centre-back,3317,79.0,75.7,71.6,98.0,2,0,16,7,154,33,119,5,2,40,71,109,18,2,1,6,8,32,213,213,228,0,9,91.1,2,110,8973690
+Theo Van Dijk,South Korea,Atletico Madrid,LaLiga,27,Central midfielder,1868,75.1,90.8,79.5,60.4,4,0,21,14,56,38,61,16,13,28,25,12,16,7,10,20,10,18,198,103,53,0,1,89.6,4,14,10591167
+Ousmane Silva,Ecuador,Monaco,Ligue 1,23,Winger,1861,73.5,78.8,76.1,49.7,5,3,42,18,21,74,28,31,26,8,10,7,39,4,27,33,15,57,201,57,22,0,0,69.4,4,10,18667014
+Alphonso Williams,Netherlands,Lille,Ligue 1,31,Winger,1606,88.5,76.5,69.5,35.8,4,2,42,31,41,103,25,43,54,17,5,13,37,1,30,42,28,73,247,96,29,0,3,75.2,4,19,12132005
+Declan Kim,Portugal,Al Ittihad,Saudi Pro League,25,Attacking midfielder,2586,87.1,67.0,71.9,79.9,2,4,55,67,74,89,56,40,50,31,18,8,59,16,24,68,25,71,380,142,40,0,5,80.6,2,16,22649862
+Florian Musiala,Morocco,Lille,Ligue 1,19,Full-back,2320,74.9,78.0,85.7,65.8,1,4,26,27,124,81,104,43,17,65,38,31,25,5,69,44,8,57,413,233,104,0,9,84.4,1,32,25255246
+Alphonso Williams 2,England,Inter Milan,Serie A,28,Goalkeeper,1221,90.6,89.8,95.6,43.7,0,0,0,0,78,0,19,0,0,0,1,4,8,1,0,0,0,0,4,55,147,61,2,80.2,0,4,9679409
+Julian Santos,Argentina,Manchester United,Premier League,30,Defensive midfielder,820,86.5,79.3,82.7,28.4,0,1,16,8,48,9,38,12,5,35,27,17,7,0,3,14,0,10,109,82,50,0,5,89.0,0,17,6821339
+Lucas Hakimi,South Korea,Arsenal,Premier League,19,Full-back,843,74.7,96.2,91.1,27.0,0,3,6,10,45,26,35,16,10,17,20,15,6,2,30,10,5,8,140,77,32,0,3,80.2,0,16,5746674
+Mason Diaz,Denmark,Inter Miami,MLS,31,Central midfielder,2728,77.1,64.4,89.6,61.7,1,5,37,29,127,51,100,34,30,54,45,29,32,9,5,46,20,33,350,204,111,0,3,82.8,1,34,16661851
+Enzo Tanaka,Turkey,Inter Milan,Serie A,24,Attacking midfielder,2200,73.2,89.5,81.6,40.7,3,7,46,47,58,76,51,33,38,29,13,10,46,11,20,62,25,68,263,105,56,0,3,79.9,3,15,30149510
+Enzo Fernandez 2,Colombia,Napoli,Serie A,25,Winger,1471,78.2,85.6,63.5,39.0,0,0,35,25,27,50,26,20,27,14,4,10,24,5,28,20,13,67,160,58,13,0,5,81.1,0,13,9225100
+Nico Torres,Argentina,RB Leipzig,Bundesliga,29,Centre-back,1444,89.6,88.6,83.9,40.2,1,0,11,4,59,10,52,4,1,23,28,47,5,0,1,0,3,18,84,90,89,0,5,85.0,1,47,10703660
+Alphonso Ramos 2,Ghana,LAFC,MLS,26,Attacking midfielder,2146,74.4,67.3,75.4,49.2,5,5,63,46,78,85,45,52,30,32,10,12,41,15,22,65,25,78,353,100,56,0,5,87.6,5,18,26933055
+Lamine Van Dijk,Portugal,RB Leipzig,Bundesliga,20,Centre-back,2092,87.7,85.3,76.1,58.9,1,2,12,4,114,22,74,15,2,40,47,81,21,3,0,5,8,23,145,180,174,0,8,83.9,1,83,22826657
+Daichi Diop,Denmark,Lyon,Ligue 1,29,Centre-back,2286,79.2,71.4,71.6,60.8,1,1,10,3,134,20,96,3,1,33,45,93,15,4,0,5,10,19,120,166,139,0,9,96.0,1,94,11482682
+Youssef Palmer,Spain,Newcastle United,Premier League,30,Central midfielder,2299,90.8,79.3,90.3,56.7,0,4,29,30,133,52,98,34,27,45,39,25,33,2,9,44,12,29,391,181,122,0,4,88.9,0,27,18631431
+Thiago Costa,Netherlands,PSV,Eredivisie,23,Centre-back,1866,84.6,76.0,88.7,52.4,4,0,12,4,126,20,108,5,2,35,47,93,14,0,0,5,2,16,127,157,142,0,4,89.7,4,93,18331508
+Thiago Costa 2,Cameroon,Marseille,Ligue 1,25,Centre-back,2013,70.9,74.0,98.0,43.6,2,0,21,5,135,25,92,5,2,25,46,80,17,1,0,12,11,23,156,172,158,0,10,92.3,2,83,27228150
+Enzo Pulisic,Senegal,Feyenoord,Eredivisie,33,Central midfielder,1854,78.6,74.4,66.1,54.4,2,2,20,15,77,35,43,21,15,31,19,17,20,1,5,38,10,17,234,103,60,0,1,86.2,2,19,7096298
+Victor Salah,Ghana,Bayer Leverkusen,Bundesliga,24,Centre-back,2050,74.6,90.4,76.7,59.9,1,1,17,3,133,17,95,14,1,36,55,85,13,1,0,11,10,33,196,168,177,0,7,89.9,1,88,24026227
+Bruno Kim,Austria,Juventus,Serie A,31,Full-back,3303,67.3,84.7,78.1,82.2,0,7,30,34,168,118,130,60,40,105,50,52,40,7,108,54,15,72,566,328,124,0,11,85.5,0,54,19952764
+Thiago Ramos,Norway,Aston Villa,Premier League,25,Goalkeeper,924,74.3,78.0,81.5,23.5,0,0,2,2,46,0,10,0,1,2,0,4,1,0,0,0,0,0,2,21,81,63,4,77.8,0,4,6085514
+Alphonso Martinez,Ecuador,Bayer Leverkusen,Bundesliga,24,Winger,814,75.3,91.3,89.8,23.8,3,3,28,11,14,42,16,20,27,10,4,7,19,0,16,17,9,35,139,52,13,0,4,83.0,3,9,14191635
+Kai Diaz,Portugal,Real Madrid,LaLiga,31,Full-back,1641,89.3,98.0,79.7,39.5,0,1,14,19,61,50,62,25,10,33,22,17,19,8,38,19,5,27,236,142,38,0,8,78.7,0,18,8757094
+Santiago Garcia,Turkey,Bayer Leverkusen,Bundesliga,28,Central midfielder,2059,72.6,91.0,71.9,66.9,3,1,26,13,99,40,60,21,16,38,26,16,27,8,5,25,5,26,239,117,62,0,5,89.5,3,17,13599201
+Pedri Salah,Serbia,Arsenal,Premier League,25,Defensive midfielder,2141,78.3,93.7,74.7,56.1,0,3,27,21,131,51,94,29,15,67,50,38,22,3,5,29,11,23,427,219,124,0,7,87.0,0,39,49910836
+Mason Tanaka,Senegal,Lille,Ligue 1,20,Attacking midfielder,2016,80.9,77.1,76.2,55.7,3,9,50,50,78,84,54,52,31,23,12,19,51,14,21,69,20,75,342,115,41,0,7,84.4,3,22,24712586
+Santiago Fernandez,Japan,PSV,Eredivisie,23,Attacking midfielder,2413,74.4,70.1,98.0,61.6,4,5,57,62,78,75,53,48,46,35,17,15,49,16,17,69,34,86,382,118,45,0,7,77.8,4,25,45567464
+Pedri Muller,Colombia,PSV,Eredivisie,25,Winger,825,77.9,71.9,80.7,18.6,1,1,18,12,14,33,12,21,20,7,5,5,12,2,19,12,7,33,99,46,11,0,3,76.3,1,6,6304220
+Youssef Kone,France,Atletico Madrid,LaLiga,18,Defensive midfielder,3476,97.3,85.3,86.8,91.2,2,4,42,31,239,57,165,35,33,135,86,57,35,8,2,50,15,39,699,377,181,0,14,90.1,2,59,25718848
+Xavi Mbaye,Japan,Fluminense,Brasileirao,31,Winger,2686,74.2,64.6,90.9,65.0,2,7,92,44,72,160,51,71,98,33,15,15,74,8,66,75,38,141,478,152,44,0,2,78.1,2,28,25584345
+Lamine Torres,England,RB Leipzig,Bundesliga,22,Defensive midfielder,1992,85.1,85.2,89.4,44.6,4,4,20,23,132,52,99,21,12,80,48,30,27,0,10,32,3,24,414,215,127,0,10,88.7,4,30,27598974
+Nico Santos,Austria,Sporting CP,Primeira Liga,24,Forward,3567,71.4,72.9,73.3,98.0,22,4,152,39,56,74,34,32,44,33,12,76,82,6,11,59,104,249,656,156,38,0,5,74.7,22,102,48044094
+Youssef Fernandez,Serbia,Atletico Madrid,LaLiga,25,Centre-back,1920,74.7,87.8,82.3,57.3,0,1,10,9,104,17,76,9,0,29,39,71,12,1,1,6,13,15,113,128,106,0,4,92.1,0,73,27828742
+Leo Alvarez,Uruguay,Bayer Leverkusen,Bundesliga,28,Full-back,2592,81.0,90.2,87.5,66.8,3,4,30,31,133,83,108,45,20,80,42,36,33,9,69,43,7,52,447,229,97,0,6,78.5,3,37,40092259
+Xavi Santos,Turkey,Athletic Club,LaLiga,36,Attacking midfielder,1552,70.6,77.3,82.5,53.7,3,4,28,22,31,44,32,20,27,16,5,10,26,7,10,42,18,47,191,67,24,0,2,78.8,3,12,4545217
+Kylian Torres,Switzerland,Manchester United,Premier League,32,Winger,694,77.7,79.7,95.0,18.0,4,1,18,15,24,56,16,23,30,7,5,3,23,3,21,30,11,56,175,65,10,0,1,78.9,4,5,17290155
+Weston Diop,Mexico,Sao Paulo,Brasileirao,26,Central midfielder,2494,81.4,61.2,80.3,65.1,2,7,41,31,144,62,114,38,36,65,52,33,30,18,9,36,18,45,403,242,126,0,6,83.7,2,38,23701242
+Thiago Palmer,Nigeria,Paris Saint-Germain,Ligue 1,29,Defensive midfielder,858,72.4,81.7,69.7,27.8,1,0,12,9,58,10,31,11,7,30,21,16,8,1,3,14,1,11,159,93,37,0,4,83.4,1,16,14227129
+Lamine Kone,USA,Braga,Primeira Liga,24,Defensive midfielder,2470,77.2,68.7,76.4,65.8,1,4,28,17,139,44,105,24,10,69,59,31,25,2,3,25,4,22,381,212,121,0,6,89.5,1,31,22865817
+Hugo Tanaka,Austria,AC Milan,Serie A,30,Defensive midfielder,2088,71.9,88.7,82.4,47.2,1,1,30,23,174,45,113,21,14,71,68,53,39,2,5,28,9,28,419,240,118,0,10,87.4,1,54,36156190
+Victor Musiala 2,Switzerland,Manchester United,Premier League,30,Centre-back,2972,79.1,83.8,89.8,81.9,2,2,26,8,231,37,185,13,4,52,79,136,23,3,0,10,16,31,273,286,271,0,13,88.3,2,140,30522834
+Cole Pulisic,Brazil,RB Leipzig,Bundesliga,29,Central midfielder,2348,92.2,84.5,77.2,71.2,5,2,21,11,76,39,55,26,14,33,22,13,11,10,6,34,10,23,211,146,75,0,6,88.4,4,14,9907103
+Enzo Benali 2,Cameroon,Lyon,Ligue 1,24,Defensive midfielder,1651,67.2,73.1,74.3,48.0,1,3,14,12,69,28,58,16,8,36,35,29,21,3,2,12,3,21,260,134,76,0,3,93.1,1,29,11234166
+Sofiane Palmer,Netherlands,PSV,Eredivisie,27,Full-back,2682,84.6,76.3,70.0,66.5,2,2,16,19,70,55,34,25,11,51,30,19,17,2,40,29,7,33,262,139,67,0,9,81.0,2,21,8873253
+Xavi Kone,Egypt,Porto,Primeira Liga,25,Full-back,2370,73.7,78.8,70.2,57.1,0,2,14,27,77,63,66,30,14,36,44,28,24,6,44,16,3,25,277,152,72,0,6,80.5,0,28,15731738
+Tyler Van Dijk,Egypt,Monaco,Ligue 1,29,Centre-back,824,76.9,76.6,77.6,24.4,1,0,4,0,32,7,22,2,2,8,10,12,1,0,0,0,4,4,26,32,38,0,1,91.5,1,13,4019026
+Tyler Osimhen,Japan,Atlanta United,MLS,27,Attacking midfielder,1687,74.5,59.8,75.7,40.7,3,2,30,24,41,35,24,30,13,17,4,7,18,2,2,24,13,41,146,49,25,0,1,79.8,3,9,5583556
+Pedri Ramos,Uruguay,Eintracht Frankfurt,Bundesliga,26,Forward,1670,88.2,73.8,87.7,51.2,12,3,51,15,20,29,21,17,17,10,2,42,35,3,3,25,35,90,312,53,18,0,0,80.1,12,47,22295892
+Nico Torres 2,Germany,Bayern Munich,Bundesliga,23,Central midfielder,2170,80.0,89.0,77.0,57.5,1,3,32,27,120,47,75,28,27,48,33,29,24,2,4,33,16,32,350,165,82,0,2,86.1,1,33,38738969
+Jude Tanaka 2,Japan,Inter Milan,Serie A,26,Attacking midfielder,1862,80.4,88.7,88.8,43.3,5,7,36,33,40,46,37,38,37,17,9,7,21,5,16,44,20,42,231,59,28,0,1,82.5,5,13,14887271
+Julian Walker,USA,Chelsea,Premier League,18,Defensive midfielder,2338,73.1,77.0,81.6,60.3,1,2,19,9,89,42,93,21,11,53,58,25,19,6,2,24,11,12,287,196,96,0,14,92.1,1,27,10080095
+Mohamed Hakimi,USA,Real Sociedad,LaLiga,22,Winger,688,75.6,71.8,89.9,28.0,3,6,18,13,20,35,11,26,29,3,2,10,16,3,14,15,12,31,133,39,13,0,2,78.4,3,12,7136565
+Declan Ramos,Switzerland,Paris Saint-Germain,Ligue 1,24,Defensive midfielder,1743,78.9,91.4,72.2,45.0,3,0,26,13,137,31,96,17,14,53,53,30,31,0,6,16,4,20,396,221,107,0,8,86.5,3,30,42847640
+Theo Valverde,Egypt,Al Hilal,Saudi Pro League,32,Centre-back,1172,79.0,70.5,90.1,24.6,0,0,10,4,55,6,48,8,1,20,20,32,6,0,0,1,5,16,66,92,87,0,3,87.6,0,33,7332087
+Mateo Rodriguez,Mexico,Juventus,Serie A,30,Goalkeeper,1457,68.1,87.2,90.8,50.1,0,0,0,1,75,1,24,0,1,0,3,3,7,2,0,0,0,3,9,67,159,83,4,80.2,0,3,13486917
+Kai Salah,Morocco,Tottenham,Premier League,34,Defensive midfielder,829,72.7,85.2,86.3,21.3,0,1,7,10,61,13,41,6,5,26,23,14,11,2,1,6,2,15,129,87,47,0,7,89.5,0,14,4795569
+Florian Costa,Brazil,Atalanta,Serie A,28,Forward,2784,96.6,81.2,87.8,83.5,14,8,135,38,37,66,30,46,33,29,9,65,68,3,12,31,75,192,639,132,45,0,6,71.8,13,81,47613943
+Gabriel Palmer,Uruguay,Athletic Club,LaLiga,24,Defensive midfielder,737,81.8,78.1,66.5,20.7,0,1,4,5,38,16,16,1,1,9,17,7,2,2,3,6,1,5,77,49,34,0,2,88.6,0,7,4018973
+Jude Kone,USA,Arsenal,Premier League,29,Full-back,1482,76.0,88.7,81.4,46.1,0,1,18,15,82,56,61,29,9,47,17,22,18,1,38,23,8,33,254,134,55,0,12,88.0,0,24,18167747
+Amadou Kim,England,Manchester City,Premier League,17,Central midfielder,906,88.2,95.8,87.0,40.9,2,1,17,6,47,31,38,11,8,26,23,11,15,6,5,6,5,21,156,65,35,0,2,85.4,2,12,6961812
+Min-jae Salah,Spain,Atletico Madrid,LaLiga,20,Central midfielder,2148,90.2,87.1,58.2,62.0,1,1,16,8,56,24,39,20,11,21,16,16,15,3,7,24,4,20,185,107,58,0,1,85.1,1,16,5286668
+Leo Tanaka,Croatia,Seattle Sounders,MLS,26,Full-back,912,85.2,61.9,78.6,29.3,0,4,6,5,28,23,23,15,8,24,13,17,9,2,17,8,3,16,120,56,29,0,3,79.2,0,17,4120109
+Daichi Kone,England,Real Madrid,LaLiga,33,Goalkeeper,1806,90.2,98.0,87.1,45.8,0,0,0,0,87,1,28,0,0,4,4,1,3,0,0,4,0,0,5,56,147,103,6,81.6,0,1,9329020
+Lucas Diaz,Brazil,PSV,Eredivisie,25,Full-back,530,86.1,79.3,84.8,22.2,0,0,10,6,30,34,20,14,7,12,9,10,5,0,14,10,4,19,116,66,26,0,4,81.7,0,10,12682357
+Jamal Alvarez,Nigeria,Aston Villa,Premier League,26,Central midfielder,2036,81.4,81.6,96.8,54.5,1,1,36,22,114,60,82,35,21,46,31,30,31,5,15,31,8,46,321,166,88,0,6,79.9,1,32,18552317
+Sofiane Garcia,Croatia,Barcelona,LaLiga,17,Centre-back,1081,76.5,94.6,67.4,42.6,0,1,10,4,40,7,35,2,0,18,13,39,5,0,0,4,2,13,41,73,61,0,4,90.8,0,39,4570479
+Nico Williams,Portugal,Manchester United,Premier League,23,Full-back,1984,85.0,86.3,90.4,52.1,0,1,24,20,71,60,45,25,12,46,20,20,17,0,52,22,4,24,241,139,44,0,2,83.0,0,21,8931040
+Amadou Costa,Poland,RB Leipzig,Bundesliga,25,Forward,2417,77.4,87.5,82.9,55.6,12,4,104,26,26,49,22,32,31,14,3,62,59,5,11,24,90,191,421,107,27,0,4,70.9,12,92,63316549
+Lamine Hakimi,Turkey,Lille,Ligue 1,25,Forward,2198,71.8,71.7,81.0,59.2,10,2,74,21,19,33,14,28,19,9,7,52,31,1,4,38,56,130,346,79,15,0,4,76.2,10,67,23479055
+Jude Muller,Senegal,Villarreal,LaLiga,20,Attacking midfielder,2900,82.5,74.3,83.4,73.6,3,4,64,63,56,75,43,48,30,29,14,6,42,16,12,61,15,77,346,127,55,0,4,75.1,3,9,14580499
+Min-jae Davies,Brazil,Real Sociedad,LaLiga,24,Forward,1405,88.7,78.6,72.1,45.2,0,0,53,14,13,29,16,10,11,9,8,22,33,4,3,13,41,78,216,42,5,0,0,75.0,0,31,12032488
+Weston Benali,Netherlands,Benfica,Primeira Liga,25,Attacking midfielder,2377,82.6,77.3,77.3,69.6,5,2,52,24,41,43,44,22,22,19,7,8,22,6,10,33,14,41,208,69,20,0,2,76.0,5,12,9013186
+Alphonso Osimhen,Brazil,Juventus,Serie A,22,Attacking midfielder,768,92.6,85.4,80.0,38.1,2,3,21,14,25,26,18,15,12,10,3,3,12,2,6,17,10,29,132,47,25,0,0,84.8,2,4,11879025
+Take Santos 2,Turkey,Paris Saint-Germain,Ligue 1,21,Forward,1664,74.6,92.3,65.7,51.1,6,1,60,12,26,29,14,9,21,8,2,31,33,2,2,15,29,96,244,50,16,0,2,74.9,5,37,21104754
+Cole Benali,Germany,RB Leipzig,Bundesliga,25,Goalkeeper,3392,92.9,84.4,91.5,86.2,0,1,2,0,179,8,50,1,0,1,5,6,12,2,0,3,0,1,9,130,309,186,18,74.8,0,6,16115043
+Mohamed Kim,Netherlands,Tottenham,Premier League,25,Full-back,418,85.6,79.6,79.6,18.0,0,1,3,2,20,15,11,8,1,8,8,2,3,0,13,11,1,5,74,41,16,0,0,84.7,0,2,9159541
+Weston Garcia,Netherlands,Newcastle United,Premier League,27,Centre-back,612,86.9,80.8,97.7,30.1,1,0,5,2,31,5,26,4,0,10,16,26,0,0,1,0,2,8,37,49,40,0,4,96.0,1,26,10340053
+Mateo Kim,England,Ajax,Eredivisie,27,Winger,2035,87.4,79.2,67.7,62.4,4,3,47,29,46,99,34,45,59,22,14,9,56,1,35,51,23,88,278,76,30,0,5,67.9,4,14,19880022
+Min-jae Diop,Denmark,Real Madrid,LaLiga,23,Defensive midfielder,1100,80.9,98.0,76.6,44.4,0,1,12,7,55,10,44,9,7,38,22,16,15,0,4,13,0,11,181,107,40,0,2,85.3,0,16,14648641
+Cole Rodriguez,Poland,Tottenham,Premier League,23,Attacking midfielder,1748,71.9,89.2,74.5,57.5,1,3,33,30,40,32,33,30,23,12,7,6,29,7,13,41,10,49,178,68,17,0,2,82.9,1,9,11190921
+Lamine Alvarez,Argentina,Napoli,Serie A,18,Centre-back,2040,94.6,80.2,90.3,73.0,2,0,18,7,123,22,95,9,2,48,44,96,8,1,1,8,7,21,156,186,167,0,15,88.6,2,97,21166779
+Weston Kim,Uruguay,Eintracht Frankfurt,Bundesliga,22,Centre-back,1669,81.7,74.8,66.6,47.0,1,0,6,2,38,7,36,5,1,19,20,26,6,1,1,4,4,12,46,71,65,0,4,93.3,1,26,3151060
+Xavi Smith,Turkey,Borussia Dortmund,Bundesliga,22,Forward,2603,70.1,87.1,91.3,73.7,12,2,114,32,31,52,24,21,33,20,6,66,64,6,6,52,64,205,493,108,21,0,5,80.0,12,78,77145114
+Min-jae Martinez,Croatia,Lyon,Ligue 1,19,Winger,1511,77.8,70.9,78.6,34.8,3,2,32,24,31,86,31,34,35,13,5,8,34,1,33,25,17,51,204,71,14,0,1,73.4,3,12,9075051
+Florian Tanaka,Spain,Sao Paulo,Brasileirao,28,Full-back,2939,94.3,58.9,66.1,86.8,2,5,36,32,146,123,108,66,25,79,44,43,34,7,78,30,10,48,494,275,100,0,12,87.5,2,44,12793275
+Bruno Rodriguez,Morocco,Marseille,Ligue 1,31,Attacking midfielder,759,79.6,74.7,82.8,26.5,0,2,35,28,28,40,34,14,24,12,4,7,17,9,8,33,17,30,158,67,22,0,1,85.5,0,12,14626393
+Santiago Mbaye,Argentina,PSV,Eredivisie,23,Full-back,2019,90.6,72.4,69.3,48.9,1,0,6,8,33,31,38,19,6,34,13,11,7,2,24,14,4,13,162,108,34,0,2,81.3,1,11,4115514
+Mason Salah,South Korea,Ajax,Eredivisie,27,Centre-back,2221,71.1,75.9,78.8,66.8,4,0,15,5,127,17,110,11,2,27,47,92,17,2,0,9,7,22,166,188,161,0,7,91.1,4,94,20711394
+Weston Tanaka,Brazil,Tottenham,Premier League,21,Centre-back,1588,88.8,82.3,97.4,43.9,0,1,9,3,77,14,57,9,0,37,33,47,5,1,1,3,4,18,78,126,91,0,4,89.7,0,47,12831277
+Ousmane Osimhen,Mexico,Lyon,Ligue 1,27,Central midfielder,1577,71.9,70.3,83.6,44.8,3,0,28,26,61,47,58,22,21,34,29,21,36,6,4,23,10,31,268,119,68,0,2,82.1,3,22,17926642
+Tyler Torres,Cameroon,Arsenal,Premier League,37,Goalkeeper,240,70.5,92.3,89.6,18.0,0,0,0,1,21,0,2,0,0,1,2,1,0,0,0,0,0,1,1,12,24,16,0,77.4,0,1,2336720
+Enzo Sarr,Cameroon,Monaco,Ligue 1,31,Defensive midfielder,2943,78.8,75.3,78.7,85.1,0,4,18,18,154,36,112,27,20,74,71,51,28,3,8,39,5,23,453,254,127,0,8,88.8,0,52,20994811
+Alphonso Musiala,Egypt,Eintracht Frankfurt,Bundesliga,29,Full-back,2224,73.8,72.0,88.3,56.1,0,2,13,10,67,55,71,29,14,36,16,17,24,3,50,29,6,33,271,139,68,0,1,80.0,0,18,10145814
+Florian Smith,Norway,Palmeiras,Brasileirao,29,Full-back,1843,73.6,70.8,86.5,52.0,0,3,14,20,82,52,68,28,12,43,19,21,14,1,45,16,9,36,244,111,64,0,3,86.5,0,23,9560717
+Gabriel Pulisic,Portugal,Ajax,Eredivisie,22,Winger,674,85.3,74.3,71.4,29.8,1,2,16,21,15,36,13,19,28,6,2,3,14,1,12,17,17,32,101,41,11,0,1,74.8,1,7,15465924
+Hugo Salah,Norway,Villarreal,LaLiga,31,Attacking midfielder,1555,71.9,74.3,93.1,40.1,4,3,43,38,47,55,35,46,37,19,9,14,44,9,7,47,25,55,208,85,36,0,3,81.2,4,18,12398764
+Declan Santos,Morocco,Marseille,Ligue 1,28,Central midfielder,1191,79.1,74.4,68.5,18.0,0,2,13,16,49,28,28,13,6,32,12,14,12,5,6,20,7,10,160,91,42,0,0,80.9,0,15,9703788
+Gabriel Diop,France,Atalanta,Serie A,26,Winger,1555,94.1,80.1,98.0,44.7,7,4,68,24,39,112,46,48,59,22,5,11,50,6,52,41,26,100,306,98,26,0,3,79.7,7,18,43739917
+Youssef Rice,Senegal,Manchester City,Premier League,22,Defensive midfielder,2977,77.9,92.8,89.7,72.6,4,3,45,30,184,60,127,26,20,119,75,43,28,5,7,40,7,36,525,302,158,0,12,84.1,4,44,49355467
+Leo Wirtz 2,Morocco,Flamengo,Brasileirao,25,Attacking midfielder,1866,78.1,67.1,70.6,44.1,4,5,54,43,57,85,62,51,38,30,17,12,50,13,13,45,19,66,331,129,42,0,2,79.0,4,15,30510569
+Declan Valverde,Canada,Lyon,Ligue 1,26,Centre-back,1858,75.4,74.6,80.1,34.4,0,0,10,3,82,7,60,5,2,21,38,50,6,0,0,4,2,14,102,99,109,0,3,86.2,0,50,12028389
+Gabriel Osimhen 2,Ghana,Porto,Primeira Liga,25,Forward,2289,66.8,73.6,86.5,65.3,11,4,99,20,33,42,16,23,30,24,6,53,35,5,5,38,56,153,440,100,24,0,9,81.7,11,71,44644172
+Jamal Kim,Egypt,Juventus,Serie A,28,Full-back,2803,73.7,80.1,77.5,81.9,2,6,17,25,103,82,85,44,24,71,45,27,35,3,59,36,6,42,339,169,89,0,8,86.0,2,28,23413540
+Santiago Van Dijk,Netherlands,Al Ahli,Saudi Pro League,17,Centre-back,1833,85.2,70.3,81.8,56.5,0,0,7,7,75,8,48,8,3,27,27,44,3,1,0,2,5,18,105,99,113,0,3,90.2,0,45,5871671
+Daichi Diaz,Brazil,Napoli,Serie A,24,Centre-back,712,91.5,85.3,90.2,18.0,1,0,1,1,38,7,28,3,0,12,20,18,0,0,1,1,2,5,44,49,42,0,0,93.6,1,18,8112523
+Theo Williams,Turkey,Braga,Primeira Liga,20,Centre-back,2092,68.0,69.7,70.2,47.9,0,2,6,0,68,8,43,2,0,17,19,37,11,0,0,1,3,8,74,90,80,0,4,88.0,0,38,3777819
+Weston Van Dijk,Portugal,Villarreal,LaLiga,31,Defensive midfielder,2947,87.6,73.3,68.4,82.2,2,2,25,14,141,39,85,19,9,64,61,43,29,2,9,33,3,28,432,218,127,0,9,89.3,2,43,11724017
+Lucas Garcia,Argentina,Barcelona,LaLiga,27,Winger,2012,94.7,89.6,73.6,58.9,6,4,32,19,23,72,29,26,48,20,9,5,38,3,22,29,17,52,207,60,17,0,4,82.9,6,10,9021172
+Pedri Torres,Denmark,Inter Milan,Serie A,24,Central midfielder,924,75.4,88.5,73.1,33.1,2,0,9,8,39,17,20,8,5,17,13,4,8,2,4,8,2,8,114,56,29,0,2,88.0,2,4,7942128
+Cole Hakimi,Poland,Benfica,Primeira Liga,29,Central midfielder,1591,73.6,78.0,83.0,52.4,0,0,12,13,34,25,25,7,6,22,16,7,14,3,4,13,3,16,143,61,30,0,3,89.2,0,7,4154379
+Mateo Benali,Ecuador,Manchester City,Premier League,27,Winger,3067,67.9,92.7,96.9,82.7,10,4,111,60,76,165,59,86,96,32,16,27,80,10,65,77,42,134,505,162,51,0,7,69.8,10,36,60438001
+Nico Rodriguez,Spain,AC Milan,Serie A,25,Winger,3335,92.9,84.3,75.5,88.1,7,2,71,50,64,136,53,70,79,33,16,12,63,8,73,70,35,113,435,147,41,0,4,72.7,7,21,17523384
+Julian Pereira,Poland,Real Sociedad,LaLiga,29,Central midfielder,1609,69.5,76.6,98.0,41.3,3,6,39,34,105,77,107,53,37,52,36,24,34,4,7,46,13,38,343,201,70,0,4,79.9,3,26,33484623
+Rafael Costa,South Korea,Lyon,Ligue 1,24,Full-back,1600,72.3,74.5,72.5,37.3,1,0,13,14,52,39,50,20,14,29,17,13,21,3,33,18,3,21,203,94,31,0,6,80.4,1,14,9019001
+Jude Kim,Australia,LAFC,MLS,29,Attacking midfielder,1894,67.8,62.5,72.0,45.0,1,2,23,26,37,31,34,12,13,7,7,1,24,5,6,40,7,27,160,61,21,0,4,80.0,1,2,4094261
+Alphonso Kim,Turkey,Barcelona,LaLiga,22,Goalkeeper,2629,80.8,89.0,94.6,72.1,0,0,1,0,155,5,37,0,1,3,5,5,12,0,0,2,0,2,15,105,263,163,11,83.3,0,5,19413338
+Amadou Williams,Spain,Atletico Madrid,LaLiga,22,Central midfielder,879,85.0,89.8,79.6,18.0,0,2,13,15,29,27,33,19,7,12,18,6,7,2,2,16,2,9,122,57,36,0,0,83.8,0,6,13526166
+Thiago Pulisic,Japan,Arsenal,Premier League,24,Attacking midfielder,2055,73.7,96.3,73.6,50.7,0,3,35,41,35,69,37,25,28,27,12,7,26,16,16,45,15,41,232,99,34,0,4,79.0,0,11,21647665
+Youssef Silva,Poland,Atletico Madrid,LaLiga,29,Central midfielder,606,76.2,85.5,90.6,18.0,3,0,6,5,34,9,30,11,9,11,11,7,12,2,4,17,2,12,120,65,39,0,1,87.8,3,7,13692972
+Victor Kone,Argentina,Manchester United,Premier League,23,Centre-back,549,89.4,80.9,69.6,22.3,0,0,3,0,21,3,26,4,1,6,5,13,0,0,0,2,2,6,20,29,19,0,2,91.0,0,13,1985946
+Xavi Garcia,South Korea,Inter Milan,Serie A,21,Attacking midfielder,3295,71.0,93.4,75.4,88.9,2,8,69,41,86,87,64,50,58,32,17,16,58,12,20,79,31,72,391,140,51,0,6,78.0,2,25,25938050
+Kylian Costa,Cameroon,Lille,Ligue 1,32,Full-back,2845,68.8,74.4,75.3,78.7,1,3,35,28,149,103,97,41,22,68,51,30,39,8,83,42,9,48,439,246,110,0,7,77.8,1,32,11600531
+Min-jae Pulisic 2,Ghana,Marseille,Ligue 1,23,Centre-back,2662,66.5,73.8,98.0,84.1,3,1,21,3,173,30,109,6,3,38,68,99,16,2,2,6,15,26,197,215,217,0,8,87.6,3,102,35292845
+Joao Mbaye,France,Bayern Munich,Bundesliga,29,Centre-back,2094,94.8,94.4,83.0,57.7,1,0,13,3,75,16,56,7,0,19,16,53,6,1,0,2,7,20,85,127,89,0,5,94.4,1,54,7940422
+Amadou Hakimi,Egypt,RB Leipzig,Bundesliga,28,Attacking midfielder,2192,76.8,86.7,87.0,56.7,8,6,58,42,77,63,56,41,39,24,13,18,44,14,22,49,22,58,357,114,61,0,2,81.8,8,25,27475513
+Mateo Rice,Senegal,Paris Saint-Germain,Ligue 1,30,Centre-back,2395,76.0,91.6,78.8,67.8,1,1,6,2,103,17,58,5,0,22,34,65,15,0,2,4,5,19,120,121,108,0,3,90.3,1,66,10586221
+Amadou Diaz,Canada,Sporting CP,Primeira Liga,22,Forward,576,70.1,78.1,91.7,18.6,4,0,16,5,8,11,5,14,12,2,1,10,15,1,1,16,13,56,121,20,2,0,1,76.5,4,13,22404886
+Youssef Fernandez 2,Ghana,Villarreal,LaLiga,25,Goalkeeper,701,73.0,70.2,96.5,18.0,0,0,3,0,43,3,17,2,0,0,2,4,5,1,0,1,0,0,2,25,90,32,0,75.7,0,4,7800978
+Santiago Rodriguez,Netherlands,Napoli,Serie A,20,Central midfielder,1861,86.5,80.9,78.5,63.2,0,1,24,21,46,34,60,17,8,31,23,17,17,7,7,30,10,15,212,129,73,0,3,84.4,0,19,13998658
+Daichi Alvarez,Netherlands,Braga,Primeira Liga,34,Full-back,1386,86.8,67.7,93.7,42.8,0,7,10,8,39,40,52,18,7,31,15,14,24,2,36,14,0,23,198,104,39,0,4,76.9,0,14,4289242
+Mason Sarr,France,Newcastle United,Premier League,25,Full-back,1386,94.8,78.6,85.2,49.8,0,2,8,11,49,42,32,14,6,26,18,13,24,1,31,19,2,20,153,91,43,0,2,78.2,0,13,7537944
+Victor Benali,Nigeria,Villarreal,LaLiga,28,Central midfielder,845,74.5,76.1,72.1,18.0,1,2,15,9,46,16,30,10,8,19,13,12,10,1,2,15,3,15,142,51,32,0,1,84.8,1,12,9022867
+Bruno Benali,Spain,Manchester City,Premier League,20,Forward,3498,91.9,98.0,77.9,98.0,25,4,193,46,51,89,44,51,47,26,10,99,97,5,4,45,119,250,739,170,37,0,8,76.7,25,139,68206143
+Jamal Sarr,Colombia,Aston Villa,Premier League,27,Attacking midfielder,525,77.7,76.0,91.6,18.0,0,2,15,6,13,15,7,12,14,8,3,4,5,3,4,16,4,18,68,30,14,0,0,81.0,0,4,8319587
+Tyler Van Dijk 2,Ecuador,Inter Milan,Serie A,26,Full-back,1240,72.9,88.5,80.5,43.7,1,1,8,6,29,33,34,7,2,24,12,10,14,1,24,13,2,13,147,80,26,0,5,81.7,1,10,7806405
+Florian Martinez,Serbia,Flamengo,Brasileirao,17,Centre-back,1763,81.0,68.5,71.4,51.5,1,0,7,0,68,10,40,5,4,23,19,46,4,2,0,2,6,9,81,78,69,0,5,85.0,1,47,3076296
+Daichi Smith,Norway,Napoli,Serie A,23,Central midfielder,2638,68.5,78.8,83.0,49.3,4,3,54,38,156,74,110,41,32,54,47,28,34,10,13,53,12,55,471,219,109,0,10,88.7,4,30,39115523
+Take Torres,Netherlands,Borussia Dortmund,Bundesliga,26,Full-back,1995,91.8,80.6,80.2,47.7,0,3,15,24,101,65,87,39,16,52,28,19,26,3,52,37,6,32,354,178,85,0,3,80.7,0,20,27584635
+Pedri Rodriguez,Spain,Liverpool,Premier League,32,Centre-back,2757,87.9,87.9,83.4,77.5,1,1,22,9,130,22,124,13,3,59,59,123,19,1,1,8,19,35,201,195,203,0,6,95.7,1,127,14487793
+Weston Garcia 2,Egypt,AZ Alkmaar,Eredivisie,30,Attacking midfielder,2775,69.8,69.1,94.0,65.5,6,10,95,90,103,140,81,76,66,52,25,22,74,24,28,118,30,116,536,180,67,0,5,80.5,5,26,36212348
+Jamal Musiala,Mexico,Villarreal,LaLiga,23,Defensive midfielder,1477,75.2,71.3,58.5,38.1,1,0,17,12,92,39,56,12,4,59,30,17,13,2,4,19,2,16,285,164,100,0,5,82.8,1,17,11902078
+Mason Smith,Germany,Feyenoord,Eredivisie,28,Attacking midfielder,2045,85.6,72.5,83.0,51.9,7,3,45,35,48,74,50,44,44,26,6,12,34,11,17,57,22,65,263,86,38,0,10,80.0,7,16,17421071
+Youssef Rice 2,Denmark,Seattle Sounders,MLS,21,Goalkeeper,1395,84.6,56.5,67.3,45.9,0,0,0,0,56,4,14,0,0,2,1,3,6,0,0,0,0,0,4,38,121,75,2,74.2,0,3,5443055
+Tyler Silva,France,Inter Milan,Serie A,23,Centre-back,1861,93.6,83.9,84.1,54.2,0,0,8,2,73,10,54,5,0,25,23,50,6,0,0,6,10,15,75,93,103,0,3,90.0,0,52,8591745
+Victor Wirtz,Norway,Chelsea,Premier League,26,Centre-back,1931,67.9,86.3,83.3,43.7,0,0,7,1,134,25,112,8,1,32,49,89,12,0,2,12,19,30,160,196,175,0,10,93.8,0,93,49124615
+Florian Palmer,Morocco,Monaco,Ligue 1,26,Defensive midfielder,670,79.6,77.2,79.4,28.3,0,2,6,4,36,11,38,11,5,15,8,12,14,2,3,7,2,6,106,76,33,0,2,87.7,0,12,6056743
+Mason Wirtz,Turkey,Borussia Dortmund,Bundesliga,29,Winger,2068,68.0,81.9,94.2,41.9,13,9,50,37,56,81,43,55,65,27,9,13,49,3,54,44,26,91,304,104,18,0,3,72.9,13,20,22370570
+Youssef Fernandez 3,Brazil,Manchester United,Premier League,29,Central midfielder,1701,92.4,78.9,81.0,63.2,1,4,20,14,68,44,54,23,17,31,28,15,19,8,4,20,8,20,198,116,64,0,4,82.6,1,16,16401233
+Gabriel Van Dijk,Switzerland,Atletico Madrid,LaLiga,31,Forward,2278,73.8,89.6,71.5,58.4,19,7,88,16,21,35,11,26,15,8,8,49,38,0,1,26,76,123,327,74,15,0,3,79.4,19,74,22485192
+Victor Benali 2,South Korea,Manchester City,Premier League,30,Attacking midfielder,1712,66.1,96.3,88.7,41.3,3,5,55,51,67,79,50,46,41,27,13,10,35,9,19,62,30,69,314,119,52,0,2,82.1,3,18,32222337
+Victor Silva,Uruguay,AC Milan,Serie A,32,Full-back,724,84.2,86.8,82.9,18.0,0,0,5,7,28,15,19,16,4,10,6,10,6,3,12,9,1,15,99,49,24,0,5,81.1,0,10,3026554
+Rafael Fernandez,Egypt,Chelsea,Premier League,26,Centre-back,433,73.2,78.3,74.8,18.0,0,0,2,2,24,1,16,2,0,6,6,22,2,1,0,2,0,6,27,33,31,0,2,85.7,0,22,5915579
+Kai Alvarez,France,Seattle Sounders,MLS,19,Attacking midfielder,1439,93.5,60.3,68.1,31.3,6,6,35,28,48,47,35,22,30,13,8,6,27,3,10,36,14,42,183,60,29,0,2,81.3,6,9,7349245
+Youssef Pereira,Germany,Inter Milan,Serie A,26,Central midfielder,750,88.3,88.8,90.2,23.6,0,3,12,3,30,19,19,6,7,10,5,13,11,1,2,9,7,9,80,47,28,0,5,91.7,0,15,8754775
+Joao Ramos,Germany,Borussia Dortmund,Bundesliga,29,Full-back,1415,88.5,87.1,87.9,38.2,0,3,7,14,66,42,56,26,14,43,25,16,11,5,30,26,4,20,212,114,50,0,10,84.8,0,16,12223917
+Lamine Diaz,Turkey,Real Sociedad,LaLiga,23,Attacking midfielder,1236,77.8,81.3,83.8,45.6,2,6,28,29,37,51,33,35,23,22,13,8,32,5,14,32,17,40,202,69,35,0,3,81.3,2,11,18137606
+Federico Salah,Senegal,Monaco,Ligue 1,20,Full-back,2737,79.9,80.4,92.4,80.9,2,3,23,26,98,76,70,39,24,46,33,32,23,6,54,36,6,39,364,179,69,0,10,85.8,2,34,21210799
+Lamine Torres 2,France,Roma,Serie A,23,Winger,2419,94.4,78.3,82.4,67.0,9,4,62,36,73,147,48,44,80,30,10,14,67,9,47,49,31,110,387,113,25,0,7,76.5,9,20,42007332
+Mateo Musiala,Portugal,Lille,Ligue 1,26,Full-back,1871,89.9,68.7,87.1,49.9,1,4,19,19,100,51,69,43,18,55,31,41,34,4,67,36,6,44,355,199,99,0,7,85.4,1,42,33511038
+Ousmane Ramos,Canada,Atalanta,Serie A,21,Goalkeeper,2841,69.8,76.6,98.0,63.9,0,2,2,0,182,10,47,0,0,5,3,10,11,0,0,5,0,3,14,138,371,159,19,79.2,0,10,37593402
+Enzo Palmer,Netherlands,Newcastle United,Premier League,28,Forward,1632,88.5,74.9,84.8,60.6,5,4,68,19,31,29,16,16,24,8,5,36,47,4,2,22,42,114,319,51,18,0,3,75.0,5,50,29418266
+Santiago Kim,Mexico,Athletic Club,LaLiga,23,Forward,2905,77.7,77.2,54.8,73.3,7,2,61,13,18,20,16,13,25,12,2,34,24,1,4,22,37,103,257,57,15,0,0,68.2,7,43,16472268
+Ousmane Benali,Germany,Manchester United,Premier League,33,Winger,2322,87.6,78.2,56.4,67.4,4,9,61,41,58,125,54,61,73,21,13,7,57,5,72,66,26,124,404,133,33,0,1,77.3,4,12,23881049
+Mohamed Salah,Croatia,AZ Alkmaar,Eredivisie,31,Centre-back,1778,83.6,69.6,83.5,46.4,0,0,6,2,82,20,64,3,0,31,42,65,13,0,0,5,3,17,113,120,127,0,2,88.5,0,65,4438407
+Alphonso Rodriguez,Mexico,Arsenal,Premier League,26,Attacking midfielder,2284,74.0,90.9,98.0,55.5,6,9,83,73,88,123,84,78,71,42,22,23,60,15,33,81,45,121,514,188,85,0,6,82.2,6,33,54724498
+Lamine Pulisic,Japan,Barcelona,LaLiga,26,Central midfielder,2933,73.6,93.9,73.9,79.8,1,4,32,22,104,41,71,33,13,42,38,20,27,7,3,21,10,33,335,189,96,0,6,88.0,1,22,20098067
+Kylian Van Dijk,France,PSV,Eredivisie,21,Centre-back,927,90.8,73.5,93.2,39.0,1,0,10,3,49,9,37,6,1,20,31,52,10,3,0,3,1,16,91,80,76,0,1,95.4,1,52,12835978
+Daichi Valverde,Turkey,Villarreal,LaLiga,18,Forward,1417,77.2,75.2,88.0,23.6,12,0,49,24,24,28,14,14,17,12,4,34,29,3,5,23,41,109,245,60,21,0,4,72.6,11,41,19760617
+Bruno Benali 2,Cameroon,Benfica,Primeira Liga,31,Winger,3480,74.6,82.5,75.6,90.3,8,9,72,47,70,164,75,80,85,36,25,20,80,5,87,88,46,143,548,148,47,0,7,76.3,8,30,18543097
+Lamine Muller 2,England,Fluminense,Brasileirao,25,Defensive midfielder,995,90.2,63.5,98.0,26.0,0,2,16,14,72,17,43,18,5,31,30,15,14,0,6,11,2,17,181,98,57,0,2,86.4,0,15,10125468
+Leo Pulisic,Egypt,LAFC,MLS,22,Forward,2644,74.7,62.9,68.4,59.1,5,6,107,18,26,39,14,24,29,19,4,52,44,2,3,32,60,164,406,81,24,0,4,76.9,5,62,22828811
+Amadou Fernandez,Serbia,Arsenal,Premier League,26,Central midfielder,2084,72.9,91.6,86.9,47.4,3,2,33,26,88,48,86,15,18,55,28,22,23,8,9,25,7,24,273,147,69,0,3,85.5,3,23,22682039
+Xavi Benali,Switzerland,Eintracht Frankfurt,Bundesliga,31,Goalkeeper,1553,79.6,73.4,70.4,41.3,0,0,1,0,87,2,30,1,1,1,1,0,9,2,0,0,0,0,5,61,161,95,10,85.9,0,0,7464350
+Alphonso Davies,Senegal,Bayer Leverkusen,Bundesliga,26,Centre-back,2338,80.5,88.3,80.3,59.8,1,0,9,5,97,15,68,9,2,34,39,52,7,0,1,6,7,26,117,132,118,0,3,87.2,1,53,14712136
+Declan Silva,Denmark,Napoli,Serie A,36,Attacking midfielder,2720,78.1,82.1,93.3,69.7,3,8,65,65,82,96,83,49,46,33,19,13,59,16,20,92,21,100,443,141,71,0,6,76.6,3,20,22658906
+Gabriel Silva,England,Barcelona,LaLiga,26,Winger,1491,89.4,93.6,89.0,45.2,3,7,77,37,34,137,40,63,70,29,10,15,62,6,50,57,25,114,374,96,40,0,5,72.7,3,19,69774564
+Santiago Sarr,Nigeria,Eintracht Frankfurt,Bundesliga,29,Full-back,1345,71.3,75.8,82.9,30.7,2,2,15,15,62,39,68,29,10,32,30,34,32,5,40,28,4,38,228,142,63,0,7,77.2,2,35,13272282
+Xavi Muller,Brazil,Real Madrid,LaLiga,24,Defensive midfielder,2380,93.7,95.5,80.3,59.4,0,4,23,6,92,37,72,14,13,62,43,29,23,3,4,15,3,20,291,162,74,0,6,88.5,0,29,20101115
+Alphonso Garcia,Switzerland,Inter Miami,MLS,30,Full-back,1239,80.4,67.9,88.6,38.8,0,0,8,16,46,37,44,22,5,25,21,20,17,3,22,10,5,27,169,97,35,0,1,84.1,0,20,4792104
+Daichi Hakimi,Nigeria,Ajax,Eredivisie,17,Forward,2079,73.4,76.0,74.6,43.0,6,3,50,9,17,25,12,18,11,9,6,29,27,2,2,15,30,72,200,71,14,0,0,82.5,6,38,6088636
+Jude Wirtz,Turkey,Flamengo,Brasileirao,26,Winger,1979,75.0,66.9,91.8,54.2,7,2,70,35,55,102,46,55,54,13,7,10,45,8,37,48,33,78,320,96,34,0,3,79.9,7,18,22576581
+Rafael Sarr,Mexico,Arsenal,Premier League,19,Goalkeeper,1598,71.9,90.3,68.4,31.3,0,1,0,0,48,1,13,1,0,0,2,1,2,2,0,1,0,0,2,44,93,98,3,72.3,0,1,2776580
+Min-jae Garcia,Serbia,Aston Villa,Premier League,31,Full-back,1491,77.6,78.3,74.3,40.0,0,1,16,13,62,52,55,32,9,33,21,19,19,5,51,25,5,19,232,120,51,0,4,81.7,0,20,9457079
