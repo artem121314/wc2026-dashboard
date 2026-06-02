@@ -444,7 +444,7 @@ def overview_page(df: pd.DataFrame, filtered_df: pd.DataFrame, model_summary: di
         "to their expected tournament impact?"
     )
     if not model_summary.get("model_available"):
-        st.warning(FALLBACK_WARNING)
+        st.warning(str(model_summary.get("warning") or model_summary.get("readiness_message") or FALLBACK_WARNING))
     render_data_status_panel(model_summary, df)
 
     kpis = st.columns(5)
@@ -703,16 +703,39 @@ def model_page(model_summary: dict[str, object], readiness: dict[str, object]) -
         ("Template file", "available" if readiness.get("template_exists") else "missing"),
         ("Training rows", readiness.get("row_count", 0)),
         ("Target rows", readiness.get("target_available_rows", 0)),
+        ("Usable target rows", readiness.get("usable_target_rows", 0)),
         ("Tournament years", ", ".join(str(year) for year in readiness.get("tournament_years_available", [])) or "none"),
         ("Required columns", "available" if readiness.get("required_columns_present") else "missing"),
+        ("Predictor coverage sufficient", "yes" if readiness.get("predictor_coverage_sufficient") else "no"),
+        ("Missing predictor groups", ", ".join(str(group) for group in readiness.get("missing_predictor_groups", [])) or "none"),
+        ("Activation status", readiness.get("activation_status", "unknown")),
+        ("Model status", model_summary.get("model_status", readiness.get("model_status", "unknown"))),
         ("Can train", "yes" if readiness.get("can_train") else "no"),
         ("Supervised model", "available" if model_summary.get("model_available") else "disabled"),
     ]
     st.dataframe(pd.DataFrame(readiness_rows, columns=["Check", "Status"]), hide_index=True, width="stretch")
     if not readiness.get("can_train"):
-        st.warning(str(readiness.get("disabled_reason", "Historical training data is not ready.")))
+        st.warning(str(readiness.get("readiness_message") or readiness.get("disabled_reason") or "Historical training data is not ready."))
+        if readiness.get("activation_status") == "disabled_insufficient_predictor_coverage":
+            st.info(
+                "Next action: enrich historical rows with real pre-tournament predictor values such as market value, "
+                "club-season minutes, goals, assists, senior caps, role fit or availability."
+            )
     if readiness.get("missing_required_columns"):
         st.write("Missing required columns: " + ", ".join(str(col) for col in readiness["missing_required_columns"]))
+    feature_availability = readiness.get("feature_availability")
+    if isinstance(feature_availability, pd.DataFrame) and not feature_availability.empty:
+        display_columns = [
+            "feature",
+            "feature_group",
+            "requirement",
+            "non_null",
+            "pct_non_null",
+            "minimum_pct_required",
+            "usable_for_modelling",
+        ]
+        st.markdown("#### Feature coverage")
+        st.dataframe(feature_availability[display_columns], width="stretch", hide_index=True)
 
     st.markdown("#### Training result")
     if model_summary.get("model_available"):

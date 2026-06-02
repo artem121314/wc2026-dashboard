@@ -227,7 +227,7 @@ Every source used by the historical collector must be documented. Candidate sour
 
 ## `data/historical/manual_enrichment_template.csv`
 
-Schema for manually curated historical predictor values. Copy this file to `data/historical/manual_enrichment.csv`, fill only real sourced values, then run `python scripts/apply_manual_historical_enrichment.py`.
+Schema for manually curated historical predictor values. Fill this template, or pass another compliant local CSV with the same columns, then run `python scripts/apply_manual_historical_enrichment.py --input data/historical/manual_enrichment_template.csv`.
 
 | Column | Description | Required | Type | Example | Used for |
 | --- | --- | --- | --- | --- | --- |
@@ -238,6 +238,8 @@ Schema for manually curated historical predictor values. Copy this file to `data
 | `club` | Real pre-tournament club from a compliant source. | Optional | string | Paris Saint-Germain | modelling |
 | `league` | Real pre-tournament league from a compliant source. | Optional | string | Ligue 1 | modelling |
 | `market_value_before_tournament` | Real pre-tournament market value in euros. | Optional | number | 120000000 | modelling |
+| `club_level_score` | Real or documented club-strength score scaled 0-100. Leave blank if no defensible source exists. | Optional | number | 85.0 | modelling |
+| `league_strength_score` | Real or documented league-strength score scaled 0-100. Leave blank if no defensible source exists. | Optional | number | 82.0 | modelling |
 | `club_minutes_previous_season` | Club minutes in the season immediately before the tournament. | Optional | number | 2800 | modelling |
 | `goals_previous_season` | Club goals in the previous season. | Optional | number | 21 | modelling |
 | `assists_previous_season` | Club assists in the previous season. | Optional | number | 9 | modelling |

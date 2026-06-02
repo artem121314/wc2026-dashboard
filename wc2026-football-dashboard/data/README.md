@@ -77,16 +77,16 @@ Use `data/historical/manual_enrichment_template.csv` when a compliant source or 
 
 Recommended workflow:
 
-1. Copy `data/historical/manual_enrichment_template.csv` to `data/historical/manual_enrichment.csv`.
+1. Fill `data/historical/manual_enrichment_template.csv`, or prepare another compliant CSV with the same columns.
 2. Fill only real sourced values.
 3. Include `data_source` for every row where a value is supplied.
 4. Run:
 
 ```bash
-python scripts/apply_manual_historical_enrichment.py
+python scripts/apply_manual_historical_enrichment.py --input data/historical/manual_enrichment_template.csv
 ```
 
-The script matches exact `tournament_year + player_name` keys, rejects duplicate keys, and updates only non-null supplied values. It does not fuzzy-match names, infer values, or fabricate missing fields.
+The script matches exact `tournament_year + player_name` keys, also uses `country` when provided, rejects duplicate keys, saves a backup, updates only non-null supplied values, and does not overwrite existing non-null values unless explicitly run with `--overwrite true`. It does not fuzzy-match names, infer values, or fabricate missing fields.
 
 See `docs/manual_historical_enrichment.md` for details.
 

@@ -16,6 +16,7 @@ if str(SRC_PATH) not in sys.path:
 from data_pipeline import check_data_availability, load_processed_data
 from data_sources import DATA_SOURCE_SPECS, HISTORICAL_DATA_DIR, HISTORICAL_TRAINING_TEMPLATE_PATH
 from model import check_historical_model_readiness
+from model import TARGET_DATA_MISSING_WARNING
 
 
 VALID_OUTCOMES = {"Pending", "Overperformed", "Met expectations", "Underperformed"}
@@ -173,13 +174,36 @@ def validate_historical_model_readiness(rows: list[ReportRow]) -> None:
     else:
         add(rows, "WARN", "Historical model", str(readiness["disabled_reason"]))
 
+    if readiness["row_count"] > 0 and readiness.get("target_available_rows", 0) > 0:
+        add(
+            rows,
+            "PASS",
+            "Historical model",
+            f"Historical target rows exist: {int(readiness.get('target_available_rows', 0)):,} usable rows.",
+        )
+    elif readiness["row_count"] > 0:
+        add(rows, "WARN", "Historical model", TARGET_DATA_MISSING_WARNING)
+
+    stale_text = "Historical World Cup training data is not available"
+    message_fields = [
+        str(readiness.get("disabled_reason", "")),
+        str(readiness.get("readiness_message", "")),
+    ]
+    if readiness["row_count"] > 0 and any(stale_text in message for message in message_fields):
+        add(
+            rows,
+            "WARN",
+            "Historical model",
+            "Model readiness messaging still says historical data is unavailable even though target rows exist.",
+        )
+
     missing_feature_values = readiness.get("missing_required_feature_values", [])
     if missing_feature_values and readiness["row_count"] > 0:
         add(
             rows,
             "WARN",
             "Historical model",
-            "Missing required pre-tournament feature values: " + ", ".join(str(col) for col in missing_feature_values),
+            "Unavailable activation predictor values: " + ", ".join(str(col) for col in missing_feature_values),
         )
     below_coverage = readiness.get("required_features_below_minimum_coverage", [])
     if below_coverage and readiness["row_count"] > 0:

@@ -43,6 +43,8 @@ Then fill only values supported by real, compliant sources.
 | `club` | Optional | Club before the tournament from a compliant source. |
 | `league` | Optional | League before the tournament from a compliant source. |
 | `market_value_before_tournament` | Optional | Real pre-tournament market value in euros. |
+| `club_level_score` | Optional | Real or documented club-strength score scaled 0-100. Leave blank if no defensible source exists. |
+| `league_strength_score` | Optional | Real or documented league-strength score scaled 0-100. Leave blank if no defensible source exists. |
 | `club_minutes_previous_season` | Optional | Club minutes in the season immediately before the tournament. |
 | `goals_previous_season` | Optional | Club goals in the season immediately before the tournament. |
 | `assists_previous_season` | Optional | Club assists in the season immediately before the tournament. |
@@ -73,18 +75,21 @@ Do not use:
 
 ## Applying Enrichment
 
-After filling `data/historical/manual_enrichment.csv`, run:
+After filling `data/historical/manual_enrichment_template.csv`, run:
 
 ```bash
-python scripts/apply_manual_historical_enrichment.py
+python scripts/apply_manual_historical_enrichment.py --input data/historical/manual_enrichment_template.csv
 ```
 
 The script:
 
-- requires exact `tournament_year + player_name` matches
+- uses exact `tournament_year + player_name` matches, with `country` also used when provided
 - rejects duplicate keys
 - rejects rows with values but no `data_source`
 - updates only non-null supplied values
+- does not overwrite existing non-null historical values unless run with `--overwrite true`
+- saves a timestamped backup before modifying the historical file
+- appends manual source provenance to `data/historical/source_audit_log.csv`
 - leaves blank fields unchanged
 - does not fuzzy-match players
 - does not generate fallback values
@@ -107,3 +112,36 @@ The supervised model remains disabled until:
 - each required predictor has enough variation to be useful
 
 `scripts/check_model_readiness.py` prints feature availability by column so the next missing input is visible.
+
+## How To Make The Supervised Model Turn On
+
+The warning disappears only when real predictor coverage is sufficient. Do not add synthetic or guessed values to force activation.
+
+1. Fill real predictor values in `data/historical/manual_enrichment_template.csv`.
+2. Apply the enrichment:
+
+```bash
+python scripts/apply_manual_historical_enrichment.py --input data/historical/manual_enrichment_template.csv
+```
+
+3. Check readiness:
+
+```bash
+python scripts/check_model_readiness.py
+```
+
+4. If feature coverage reaches the threshold, the supervised model becomes enabled.
+5. Refresh the dashboard dataset:
+
+```bash
+python scripts/refresh_data.py
+```
+
+6. Open the dashboard and click Refresh data if you want Streamlit to re-read the same updated inputs.
+
+Current activation rules:
+
+- at least 300 usable historical target rows
+- at least 60% real non-null coverage for required player, tournament-context and World Cup-experience predictors
+- at least three usable real recruitment/pre-tournament predictors
+- enough target variation and predictor variation for the model to learn

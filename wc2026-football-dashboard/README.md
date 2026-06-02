@@ -130,10 +130,15 @@ The current project uses the transparent baseline fallback because the real hist
 
 To enable the supervised model:
 
-1. Copy the schema from `data/historical/world_cup_player_training_data_template.csv`.
-2. Populate `data/historical/world_cup_player_training_data.csv` with real player-tournament rows for World Cup 2014, 2018 and 2022.
-3. Keep one row per `player_name + tournament_year`.
-4. Leave optional unavailable fields blank.
+1. Fill real predictor values in `data/historical/manual_enrichment_template.csv`, or use another compliant local enrichment CSV.
+2. Apply the values without fabricating missing data:
+
+```bash
+python scripts/apply_manual_historical_enrichment.py --input data/historical/manual_enrichment_template.csv
+```
+
+3. Keep one row per `player_name + tournament_year` in `data/historical/world_cup_player_training_data.csv`.
+4. Leave unavailable fields blank.
 5. Run:
 
 ```bash
@@ -149,7 +154,7 @@ python scripts/refresh_data.py
 
 7. Run the app. The Model tab will show the supervised expected-impact model as available once training succeeds.
 
-No synthetic rows are used. If the historical file is missing, empty, malformed, or too small to train, the supervised model remains disabled and the dashboard continues to label expected impact as a baseline fallback.
+No synthetic rows are used. If target rows are missing, the model is disabled because historical target data is missing. If target rows exist but real pre-tournament predictor coverage is too thin, the model is disabled because predictor coverage is insufficient. Once real enrichment reaches the thresholds, the model activates automatically.
 
 ## Historical Data Collection
 
@@ -269,20 +274,39 @@ Previous World Cup experience is optional. If `is_world_cup_debutant`, `previous
 
 The Breakout Candidates tab is designed for young first-time or low-experience players. It combines expected impact, value efficiency, age/resale profile, role fit and playing-time confidence into `breakout_candidate_score`.
 
-## If Historical Data Is Missing
+## Historical Model Status
 
-The app does not train a model and does not create training rows. It returns:
+The current blocker is not the absence of historical World Cup target rows. Those rows exist. The supervised model remains disabled until real pre-tournament predictor coverage is sufficient.
+
+Possible statuses:
+
+```text
+Historical World Cup target data is missing. The supervised model is disabled until real player-tournament rows are added.
+```
+
+```text
+Historical target data is available, but the supervised model is disabled because real pre-tournament predictor coverage is insufficient.
+```
+
+```text
+Supervised expected-impact model is enabled and trained on real historical player-tournament data.
+```
+
+When disabled due to insufficient predictor coverage, the app returns:
 
 ```text
 model_available = False
-model_status = disabled_missing_real_historical_data
+model_status = disabled_missing_real_pre_tournament_features
 ```
 
-Dashboard warning:
+The model turns on only after:
 
 ```text
-Historical World Cup training data is not available. The supervised expected-impact model is disabled until real curated historical data is added.
+minimum_training_rows = 300
+minimum_required_predictor_coverage = 0.60
 ```
+
+The readiness check also requires real player context, team/tournament context, World Cup experience signals and at least three usable recruitment/pre-tournament predictors. Do not use synthetic values to force activation.
 
 If the current player dataset has the required baseline fields, expected impact falls back to:
 

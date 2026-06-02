@@ -20,42 +20,75 @@ from data_sources import HISTORICAL_TRAINING_PATH
 from data_sources import HISTORICAL_TRAINING_TEMPLATE_PATH
 
 
-FALLBACK_WARNING = (
-    "Historical World Cup training data is not available. The supervised expected-impact model is disabled until "
-    "real curated historical data is added."
+MIN_HISTORICAL_TRAINING_ROWS = 300
+MIN_REQUIRED_PREDICTOR_COVERAGE = 0.60
+MIN_REQUIRED_FEATURE_COVERAGE_PCT = MIN_REQUIRED_PREDICTOR_COVERAGE * 100
+MIN_RECRUITMENT_PREDICTORS_FOR_MODEL = 3
+
+TARGET_DATA_MISSING_WARNING = (
+    "Historical World Cup target data is missing. The supervised model is disabled until real player-tournament rows are added."
 )
+PREDICTOR_COVERAGE_WARNING = (
+    "Historical target data is available, but the supervised model is disabled because real pre-tournament predictor "
+    "coverage is insufficient."
+)
+MODEL_ENABLED_MESSAGE = "Supervised expected-impact model is enabled and trained on real historical player-tournament data."
+INSUFFICIENT_TARGET_ROWS_WARNING = (
+    f"Historical World Cup target data is available, but at least {MIN_HISTORICAL_TRAINING_ROWS} usable target rows "
+    "with variation are required before training."
+)
+FALLBACK_WARNING = TARGET_DATA_MISSING_WARNING
 MODEL_STATUS_AVAILABLE = "available"
 MODEL_STATUS_DISABLED = "disabled_missing_real_historical_data"
 
-BASE_EXPECTED_IMPACT_FEATURES = [
+PLAYER_CONTEXT_FEATURES = [
     "age",
     "position",
+]
+
+TEAM_TOURNAMENT_CONTEXT_FEATURES = [
+    "national_team_strength",
+    "group_difficulty_score",
+]
+
+WORLD_CUP_EXPERIENCE_FEATURES = [
+    "is_world_cup_debutant",
+    "previous_world_cup_minutes",
+    "previous_world_cup_matches",
+]
+
+RECRUITMENT_PREDICTOR_FEATURES = [
     "market_value_before_tournament",
     "club_level_score",
     "league_strength_score",
     "club_minutes_previous_season",
     "goals_previous_season",
     "assists_previous_season",
-    "national_team_caps",
-    "expected_starter_score",
-    "national_team_strength",
-    "group_difficulty_score",
+    "senior_national_team_caps",
     "injury_availability_score",
     "recent_form_score",
     "role_fit_score",
 ]
 
+LEGACY_OPTIONAL_PREDICTOR_FEATURES = [
+    "national_team_caps",
+    "expected_starter_score",
+]
+
+BASE_EXPECTED_IMPACT_FEATURES = [
+    *PLAYER_CONTEXT_FEATURES,
+    *TEAM_TOURNAMENT_CONTEXT_FEATURES,
+    *WORLD_CUP_EXPERIENCE_FEATURES,
+    *RECRUITMENT_PREDICTOR_FEATURES,
+]
+
 OPTIONAL_EXPERIENCE_FEATURES = [
-    "is_world_cup_debutant",
-    "previous_world_cup_minutes",
-    "previous_world_cup_matches",
     "previous_world_cup_impact_score",
-    "senior_national_team_caps",
     "major_tournament_experience",
     "age_group",
 ]
 
-EXPECTED_IMPACT_FEATURES = [*BASE_EXPECTED_IMPACT_FEATURES, *OPTIONAL_EXPERIENCE_FEATURES]
+EXPECTED_IMPACT_FEATURES = [*BASE_EXPECTED_IMPACT_FEATURES, *LEGACY_OPTIONAL_PREDICTOR_FEATURES, *OPTIONAL_EXPERIENCE_FEATURES]
 
 REQUIRED_HISTORICAL_COLUMNS = [
     "tournament_year",
@@ -68,26 +101,13 @@ REQUIRED_HISTORICAL_COLUMNS = [
 ]
 
 REQUIRED_MODEL_VALUE_COLUMNS = [
-    "age",
-    "position",
-    "market_value_before_tournament",
-    "club_level_score",
-    "league_strength_score",
-    "club_minutes_previous_season",
-    "goals_previous_season",
-    "assists_previous_season",
-    "national_team_caps",
-    "expected_starter_score",
-    "national_team_strength",
-    "group_difficulty_score",
-    "injury_availability_score",
-    "recent_form_score",
-    "role_fit_score",
+    *PLAYER_CONTEXT_FEATURES,
+    *TEAM_TOURNAMENT_CONTEXT_FEATURES,
+    *WORLD_CUP_EXPERIENCE_FEATURES,
+    *RECRUITMENT_PREDICTOR_FEATURES,
 ]
 
 EXPECTED_HISTORICAL_TOURNAMENT_YEARS = {2014, 2018, 2022}
-MIN_HISTORICAL_TRAINING_ROWS = 30
-MIN_REQUIRED_FEATURE_COVERAGE_PCT = 60.0
 HISTORICAL_SCORE_COLUMNS = [
     "club_level_score",
     "league_strength_score",
@@ -157,7 +177,22 @@ def historical_feature_availability(data: pd.DataFrame) -> pd.DataFrame:
     row_count = len(data)
     rows: list[dict[str, object]] = []
     for feature in EXPECTED_IMPACT_FEATURES:
-        required = feature in REQUIRED_MODEL_VALUE_COLUMNS
+        if feature in PLAYER_CONTEXT_FEATURES:
+            feature_group = "player_context"
+            requirement = "required"
+        elif feature in TEAM_TOURNAMENT_CONTEXT_FEATURES:
+            feature_group = "team_tournament_context"
+            requirement = "required"
+        elif feature in WORLD_CUP_EXPERIENCE_FEATURES:
+            feature_group = "world_cup_experience"
+            requirement = "required"
+        elif feature in RECRUITMENT_PREDICTOR_FEATURES:
+            feature_group = "recruitment_pre_tournament"
+            requirement = "conditional"
+        else:
+            feature_group = "optional"
+            requirement = "optional"
+        required = requirement == "required"
         if feature in data.columns:
             non_null = int(data[feature].notna().sum())
             distinct = int(data[feature].dropna().nunique())
@@ -165,11 +200,13 @@ def historical_feature_availability(data: pd.DataFrame) -> pd.DataFrame:
             non_null = 0
             distinct = 0
         coverage = round(non_null / row_count * 100, 1) if row_count else 0.0
-        minimum = MIN_REQUIRED_FEATURE_COVERAGE_PCT if required else 1.0
-        usable = bool(non_null > 0 and distinct > 1 and (not required or coverage >= minimum))
+        minimum = MIN_REQUIRED_FEATURE_COVERAGE_PCT if requirement in {"required", "conditional"} else 1.0
+        usable = bool(non_null > 0 and distinct > 1 and (requirement == "optional" or coverage >= minimum))
         rows.append(
             {
                 "feature": feature,
+                "feature_group": feature_group,
+                "requirement": requirement,
                 "required": required,
                 "non_null": non_null,
                 "pct_non_null": coverage,
@@ -181,18 +218,55 @@ def historical_feature_availability(data: pd.DataFrame) -> pd.DataFrame:
     return pd.DataFrame(rows)
 
 
-def required_model_features_below_coverage(data: pd.DataFrame) -> list[str]:
-    """Return required features below the minimum real coverage threshold."""
+def _usable_features_by_group(data: pd.DataFrame) -> dict[str, list[str]]:
+    availability = historical_feature_availability(data)
+    usable = availability[availability["usable_for_modelling"]]
+    return {
+        str(group): group_df["feature"].astype(str).tolist()
+        for group, group_df in usable.groupby("feature_group")
+    }
+
+
+def model_activation_report(data: pd.DataFrame) -> dict[str, object]:
+    """Report whether historical rows meet the supervised-model activation rules."""
 
     availability = historical_feature_availability(data)
-    below = availability[
-        availability["required"]
-        & (
-            (availability["pct_non_null"] < MIN_REQUIRED_FEATURE_COVERAGE_PCT)
-            | (availability["distinct_values"] < 2)
-        )
-    ]
-    return below["feature"].astype(str).tolist()
+    below_required = availability[
+        availability["requirement"].eq("required") & ~availability["usable_for_modelling"]
+    ]["feature"].astype(str).tolist()
+    usable_by_group = _usable_features_by_group(data)
+    usable_recruitment = usable_by_group.get("recruitment_pre_tournament", [])
+    recruitment_ready = len(usable_recruitment) >= MIN_RECRUITMENT_PREDICTORS_FOR_MODEL
+
+    missing_groups: list[str] = []
+    for group, features in {
+        "player_context": PLAYER_CONTEXT_FEATURES,
+        "team_tournament_context": TEAM_TOURNAMENT_CONTEXT_FEATURES,
+        "world_cup_experience": WORLD_CUP_EXPERIENCE_FEATURES,
+    }.items():
+        usable = set(usable_by_group.get(group, []))
+        if any(feature not in usable for feature in features):
+            missing_groups.append(group)
+    if not recruitment_ready:
+        missing_groups.append("recruitment_pre_tournament")
+
+    activation_ready = bool(not below_required and recruitment_ready)
+    return {
+        "activation_ready": activation_ready,
+        "predictor_coverage_sufficient": activation_ready,
+        "required_features_below_minimum_coverage": below_required,
+        "usable_recruitment_predictors": usable_recruitment,
+        "usable_recruitment_predictor_count": len(usable_recruitment),
+        "minimum_recruitment_predictors_required": MIN_RECRUITMENT_PREDICTORS_FOR_MODEL,
+        "missing_predictor_groups": missing_groups,
+        "usable_features_by_group": usable_by_group,
+    }
+
+
+def required_model_features_below_coverage(data: pd.DataFrame) -> list[str]:
+    """Return required activation features below the minimum real coverage threshold."""
+
+    return list(model_activation_report(data)["required_features_below_minimum_coverage"])
 
 
 def check_historical_model_readiness(
@@ -215,17 +289,27 @@ def check_historical_model_readiness(
         "tournament_years_available": [],
         "missing_expected_tournament_years": sorted(EXPECTED_HISTORICAL_TOURNAMENT_YEARS),
         "target_available_rows": 0,
+        "usable_target_rows": 0,
         "target_valid_range": False,
         "score_range_issues": [],
         "required_feature_values_present": False,
         "missing_required_feature_values": [],
         "minimum_required_feature_coverage_pct": MIN_REQUIRED_FEATURE_COVERAGE_PCT,
+        "minimum_required_predictor_coverage": MIN_REQUIRED_PREDICTOR_COVERAGE,
+        "minimum_training_rows": MIN_HISTORICAL_TRAINING_ROWS,
         "required_features_below_minimum_coverage": [],
+        "predictor_coverage_sufficient": False,
+        "activation_status": "disabled_missing_target_data",
+        "missing_predictor_groups": [],
+        "usable_recruitment_predictors": [],
+        "usable_recruitment_predictor_count": 0,
+        "minimum_recruitment_predictors_required": MIN_RECRUITMENT_PREDICTORS_FOR_MODEL,
         "feature_availability": pd.DataFrame(),
         "can_train": False,
         "model_available": False,
         "model_status": MODEL_STATUS_DISABLED,
-        "disabled_reason": "Historical World Cup training data is missing.",
+        "disabled_reason": TARGET_DATA_MISSING_WARNING,
+        "readiness_message": TARGET_DATA_MISSING_WARNING,
         "warnings": [],
         "errors": [],
         "model_summary": None,
@@ -245,7 +329,8 @@ def check_historical_model_readiness(
     readiness["required_columns_present"] = not missing_required
 
     if len(data) == 0:
-        readiness["disabled_reason"] = "Historical training file exists but has zero real player-tournament rows."
+        readiness["disabled_reason"] = TARGET_DATA_MISSING_WARNING
+        readiness["readiness_message"] = TARGET_DATA_MISSING_WARNING
         readiness["warnings"].append(readiness["disabled_reason"])
         if missing_required:
             readiness["warnings"].append("Zero-row historical file is missing required schema columns: " + ", ".join(missing_required))
@@ -267,6 +352,7 @@ def check_historical_model_readiness(
 
     target = pd.to_numeric(data["actual_tournament_impact_score"], errors="coerce")
     readiness["target_available_rows"] = int(target.notna().sum())
+    readiness["usable_target_rows"] = int(target.notna().sum())
     target_values = target.dropna()
     readiness["target_valid_range"] = bool(not target_values.empty and target_values.between(0, 100).all())
     if target_values.empty:
@@ -285,9 +371,9 @@ def check_historical_model_readiness(
     if score_range_issues:
         readiness["errors"].append("Score columns outside 0-100: " + ", ".join(score_range_issues))
 
-    if len(data) < MIN_HISTORICAL_TRAINING_ROWS:
+    if readiness["usable_target_rows"] < MIN_HISTORICAL_TRAINING_ROWS:
         readiness["warnings"].append(
-            f"At least {MIN_HISTORICAL_TRAINING_ROWS} valid real rows are recommended before training; found {len(data)}."
+            f"At least {MIN_HISTORICAL_TRAINING_ROWS} usable target rows are required before training; found {readiness['usable_target_rows']}."
         )
     if target.nunique(dropna=True) < 2:
         readiness["warnings"].append("Target has fewer than two distinct values, so the model cannot learn a relationship.")
@@ -295,13 +381,18 @@ def check_historical_model_readiness(
     feature_availability = historical_feature_availability(data)
     readiness["feature_availability"] = feature_availability
     missing_feature_values = missing_required_model_feature_values(data)
-    below_minimum_coverage = required_model_features_below_coverage(data)
+    activation_report = model_activation_report(data)
+    below_minimum_coverage = list(activation_report["required_features_below_minimum_coverage"])
     readiness["missing_required_feature_values"] = missing_feature_values
     readiness["required_feature_values_present"] = not missing_feature_values
     readiness["required_features_below_minimum_coverage"] = below_minimum_coverage
+    readiness["predictor_coverage_sufficient"] = bool(activation_report["predictor_coverage_sufficient"])
+    readiness["missing_predictor_groups"] = list(activation_report["missing_predictor_groups"])
+    readiness["usable_recruitment_predictors"] = list(activation_report["usable_recruitment_predictors"])
+    readiness["usable_recruitment_predictor_count"] = int(activation_report["usable_recruitment_predictor_count"])
     if missing_feature_values:
         readiness["warnings"].append(
-            "Historical rows are present, but required pre-tournament model feature values are missing: "
+            "Historical rows are present, but these activation predictor values are unavailable: "
             + ", ".join(missing_feature_values)
         )
     if below_minimum_coverage:
@@ -312,8 +403,8 @@ def check_historical_model_readiness(
 
     no_errors = not readiness["errors"]
     enough_rows = len(data) >= MIN_HISTORICAL_TRAINING_ROWS
-    enough_targets = readiness["target_available_rows"] >= MIN_HISTORICAL_TRAINING_ROWS and target.nunique(dropna=True) >= 2
-    feature_values_ready = not below_minimum_coverage
+    enough_targets = readiness["usable_target_rows"] >= MIN_HISTORICAL_TRAINING_ROWS and target.nunique(dropna=True) >= 2
+    feature_values_ready = bool(activation_report["activation_ready"])
     readiness["can_train"] = bool(no_errors and enough_rows and enough_targets and feature_values_ready)
 
     if readiness["can_train"] and attempt_training:
@@ -323,18 +414,33 @@ def check_historical_model_readiness(
         readiness["model_status"] = str(model_summary.get("model_status", "unknown"))
         if readiness["model_available"]:
             readiness["disabled_reason"] = ""
+            readiness["readiness_message"] = MODEL_ENABLED_MESSAGE
+            readiness["activation_status"] = "enabled"
         else:
             readiness["disabled_reason"] = str(model_summary.get("warning", "Model training failed."))
+            readiness["readiness_message"] = readiness["disabled_reason"]
             readiness["warnings"].append(readiness["disabled_reason"])
     elif readiness["can_train"]:
         readiness["disabled_reason"] = "Historical training data appears ready; training was not attempted."
-    elif below_minimum_coverage:
-        readiness["disabled_reason"] = (
-            f"Historical training data is present but required predictors do not meet the {MIN_REQUIRED_FEATURE_COVERAGE_PCT:.0f}% real-value coverage threshold."
-        )
+        readiness["readiness_message"] = MODEL_ENABLED_MESSAGE
+        readiness["activation_status"] = "ready_not_trained"
+    elif target_values.empty:
+        readiness["disabled_reason"] = TARGET_DATA_MISSING_WARNING
+        readiness["readiness_message"] = TARGET_DATA_MISSING_WARNING
+        readiness["activation_status"] = "disabled_missing_target_data"
+    elif readiness["usable_target_rows"] < MIN_HISTORICAL_TRAINING_ROWS:
+        readiness["disabled_reason"] = INSUFFICIENT_TARGET_ROWS_WARNING
+        readiness["readiness_message"] = INSUFFICIENT_TARGET_ROWS_WARNING
+        readiness["activation_status"] = "disabled_insufficient_target_rows"
+        readiness["model_status"] = "disabled_insufficient_real_historical_rows"
+    elif below_minimum_coverage or readiness["missing_predictor_groups"]:
+        readiness["disabled_reason"] = PREDICTOR_COVERAGE_WARNING
+        readiness["readiness_message"] = PREDICTOR_COVERAGE_WARNING
+        readiness["activation_status"] = "disabled_insufficient_predictor_coverage"
         readiness["model_status"] = "disabled_missing_real_pre_tournament_features"
     elif not readiness["disabled_reason"] or readiness["disabled_reason"] == "Historical World Cup training data is missing.":
         readiness["disabled_reason"] = "Historical training data is present but not yet trainable."
+        readiness["readiness_message"] = readiness["disabled_reason"]
 
     return readiness
 
@@ -388,13 +494,19 @@ def _derive_age_group(age: pd.Series) -> pd.Series:
 
 
 def select_expected_impact_features(training_data: pd.DataFrame) -> list[str]:
-    """Use optional debutant/experience fields only when real historical values exist."""
+    """Use only real-covered predictors that pass the activation coverage rules."""
 
-    selected = list(BASE_EXPECTED_IMPACT_FEATURES)
-    for feature in OPTIONAL_EXPERIENCE_FEATURES:
-        if feature in training_data.columns and training_data[feature].notna().any():
-            selected.append(feature)
-    return selected
+    availability = historical_feature_availability(training_data)
+    usable = set(availability.loc[availability["usable_for_modelling"], "feature"].astype(str))
+    ordered_features = [
+        *PLAYER_CONTEXT_FEATURES,
+        *TEAM_TOURNAMENT_CONTEXT_FEATURES,
+        *WORLD_CUP_EXPERIENCE_FEATURES,
+        *RECRUITMENT_PREDICTOR_FEATURES,
+        *LEGACY_OPTIONAL_PREDICTOR_FEATURES,
+        *OPTIONAL_EXPERIENCE_FEATURES,
+    ]
+    return [feature for feature in ordered_features if feature in usable]
 
 
 def prepare_expected_impact_features(
@@ -524,6 +636,10 @@ def _empty_training_result(model_type: str = "gradient_boosting") -> dict[str, o
         "model_features": BASE_EXPECTED_IMPACT_FEATURES,
         "metrics": pd.DataFrame(columns=["model", "mae", "rmse", "r2"]),
         "feature_importance": pd.DataFrame(columns=["feature", "importance"]),
+        "readiness_message": FALLBACK_WARNING,
+        "predictor_coverage_sufficient": False,
+        "missing_predictor_groups": [],
+        "usable_recruitment_predictors": [],
     }
 
 
@@ -553,29 +669,47 @@ def train_expected_impact_model(
     valid = y.notna()
     training_data = training_data.loc[valid].copy()
     y = y.loc[valid].clip(0, 100)
-    if len(training_data) < 30 or y.nunique() < 2:
+    if len(training_data) < MIN_HISTORICAL_TRAINING_ROWS or y.nunique() < 2:
         result = _empty_training_result(model_type)
         result["model_status"] = "disabled_insufficient_real_historical_rows"
-        result["warning"] = (
-            "Historical World Cup training data is present but does not contain enough valid target rows to train "
-            "a supervised model."
-        )
+        result["warning"] = INSUFFICIENT_TARGET_ROWS_WARNING + f" Found {len(training_data)} usable target rows."
+        result["readiness_message"] = result["warning"]
         result["training_row_count"] = int(len(training_data))
         return result
 
-    below_minimum_coverage = required_model_features_below_coverage(training_data)
-    if below_minimum_coverage:
+    activation_report = model_activation_report(training_data)
+    if not activation_report["activation_ready"]:
         result = _empty_training_result(model_type)
         result["model_status"] = "disabled_missing_real_pre_tournament_features"
-        result["warning"] = (
-            f"Historical World Cup outcome rows are present, but these required predictors do not meet the "
-            f"{MIN_REQUIRED_FEATURE_COVERAGE_PCT:.0f}% real-value coverage threshold: "
-            + ", ".join(below_minimum_coverage)
-        )
+        missing_groups = list(activation_report["missing_predictor_groups"])
+        below_minimum_coverage = list(activation_report["required_features_below_minimum_coverage"])
+        detail_parts = []
+        if missing_groups:
+            detail_parts.append("missing predictor groups: " + ", ".join(missing_groups))
+        if below_minimum_coverage:
+            detail_parts.append(
+                f"predictors below {MIN_REQUIRED_FEATURE_COVERAGE_PCT:.0f}% real-value coverage or lacking variation: "
+                + ", ".join(below_minimum_coverage)
+            )
+        result["warning"] = PREDICTOR_COVERAGE_WARNING + (" " + " | ".join(detail_parts) if detail_parts else "")
+        result["readiness_message"] = PREDICTOR_COVERAGE_WARNING
         result["training_row_count"] = int(len(training_data))
+        result["predictor_coverage_sufficient"] = False
+        result["missing_predictor_groups"] = missing_groups
+        result["usable_recruitment_predictors"] = list(activation_report["usable_recruitment_predictors"])
         return result
 
     feature_columns = select_expected_impact_features(training_data)
+    if len(feature_columns) < 6:
+        result = _empty_training_result(model_type)
+        result["model_status"] = "disabled_missing_real_pre_tournament_features"
+        result["warning"] = (
+            PREDICTOR_COVERAGE_WARNING
+            + " Fewer than six usable real predictors are available after coverage checks."
+        )
+        result["readiness_message"] = PREDICTOR_COVERAGE_WARNING
+        result["training_row_count"] = int(len(training_data))
+        return result
     X = prepare_expected_impact_features(training_data, feature_columns)
     X_train, X_test, y_train, y_test = train_test_split(
         X,
@@ -612,6 +746,10 @@ def train_expected_impact_model(
         "model_features": feature_columns,
         "metrics": metrics_df,
         "feature_importance": get_feature_importance(selected_model, selected_name),
+        "readiness_message": MODEL_ENABLED_MESSAGE,
+        "predictor_coverage_sufficient": True,
+        "missing_predictor_groups": [],
+        "usable_recruitment_predictors": list(activation_report["usable_recruitment_predictors"]),
     }
 
 
