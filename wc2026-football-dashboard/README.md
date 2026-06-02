@@ -56,6 +56,7 @@ data/raw/player_performance_inputs.csv
 data/raw/market_values.csv
 data/raw/national_team_context.csv
 data/raw/tournament_match_data.csv
+data/historical/world_cup_player_training_data_template.csv
 data/historical/world_cup_player_training_data.csv
 data/processed/player_dashboard_data.csv
 ```
@@ -115,11 +116,40 @@ age_group
 
 These optional fields can improve the model when real curated values exist, but they are not required for model training.
 
+See `docs/historical_data_collection_plan.md` for a practical collection workflow and compliant source guidance.
+
 Recommended historical tournaments:
 
 - World Cup 2014
 - World Cup 2018
 - World Cup 2022
+
+## How To Enable The Supervised Expected-Impact Model
+
+The current project uses the transparent baseline fallback because real historical training rows are not yet provided.
+
+To enable the supervised model:
+
+1. Copy the schema from `data/historical/world_cup_player_training_data_template.csv`.
+2. Populate `data/historical/world_cup_player_training_data.csv` with real player-tournament rows for World Cup 2014, 2018 and 2022.
+3. Keep one row per `player_name + tournament_year`.
+4. Leave optional unavailable fields blank.
+5. Run:
+
+```bash
+python scripts/check_model_readiness.py
+python scripts/validate_project.py
+```
+
+6. If readiness passes, refresh the dashboard data:
+
+```bash
+python scripts/refresh_data.py
+```
+
+7. Run the app. The Model tab will show the supervised expected-impact model as available once training succeeds.
+
+No synthetic rows are used. If the historical file is missing, empty, malformed, or too small to train, the supervised model remains disabled and the dashboard continues to label expected impact as a baseline fallback.
 
 ## Actual Tournament Data Requirements
 
@@ -242,6 +272,12 @@ Run project validation:
 python scripts/validate_project.py
 ```
 
+Check historical model readiness:
+
+```bash
+python scripts/check_model_readiness.py
+```
+
 ## Project Structure
 
 ```text
@@ -253,9 +289,11 @@ wc2026-football-dashboard/
 │   ├── historical/
 │   └── processed/
 ├── docs/
-│   └── data_schema.md
+│   ├── data_schema.md
+│   └── historical_data_collection_plan.md
 ├── notebooks/
 ├── scripts/
+│   ├── check_model_readiness.py
 │   ├── refresh_data.py
 │   └── validate_project.py
 ├── src/

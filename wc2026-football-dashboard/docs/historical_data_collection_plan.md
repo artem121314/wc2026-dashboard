@@ -1,0 +1,152 @@
+# Historical Data Collection Plan
+
+This project does not include fabricated historical training rows. The supervised expected-impact model becomes available only after `data/historical/world_cup_player_training_data.csv` is populated with real, curated player-tournament observations.
+
+## Required Grain
+
+Each row must represent one player before one World Cup and that player's actual impact in the same tournament.
+
+```text
+player_name + tournament_year
+```
+
+Examples:
+
+- Player A before World Cup 2014, then actual impact at World Cup 2014.
+- Player B before World Cup 2018, then actual impact at World Cup 2018.
+- Player C before World Cup 2022, then actual impact at World Cup 2022.
+
+This is not repeated-player history. A 2026 target player does not need to have played in a previous World Cup. The model learns from historical player profiles and applies those patterns to current players, including debutants.
+
+## Target File
+
+Build:
+
+```text
+data/historical/world_cup_player_training_data.csv
+```
+
+Use the schema-only template:
+
+```text
+data/historical/world_cup_player_training_data_template.csv
+```
+
+Copy the template headers, then populate rows only from real, compliant sources.
+
+## Tournaments
+
+Recommended historical tournaments:
+
+- World Cup 2014
+- World Cup 2018
+- World Cup 2022
+
+The readiness script checks whether these tournament years are present. Missing years are reported so the analyst knows which coverage gaps remain.
+
+## Feature Groups
+
+### A. Player Identity And Context
+
+| Column | Notes |
+| --- | --- |
+| `player_name` | Player name before the tournament. |
+| `tournament_year` | One of the historical World Cup years. |
+| `country` | National team. |
+| `position` | Normalised position used by the dashboard. |
+| `age` | Player age before the tournament. |
+| `club` | Club before the tournament. |
+| `league` | League before the tournament. |
+
+### B. Pre-Tournament Market And Context
+
+| Column | Notes |
+| --- | --- |
+| `market_value_before_tournament` | Real pre-tournament market value in euros. |
+| `club_level_score` | Real or documented club-strength score scaled 0-100. |
+| `league_strength_score` | Real or documented league-strength score scaled 0-100. |
+| `national_team_strength` | Real or documented national-team strength score scaled 0-100. |
+| `group_difficulty_score` | Group/tournament draw difficulty score scaled 0-100. |
+
+### C. Pre-Tournament Performance
+
+| Column | Notes |
+| --- | --- |
+| `club_minutes_previous_season` | Club minutes in the season before the tournament. |
+| `goals_previous_season` | Club goals in the season before the tournament. |
+| `assists_previous_season` | Club assists in the season before the tournament. |
+| `recent_form_score` | Real or documented form score scaled 0-100. |
+| `role_fit_score` | Real or documented tactical/role fit score scaled 0-100. |
+| `expected_starter_score` | Expected national-team starter/minutes likelihood score scaled 0-100. |
+
+### D. National-Team Experience
+
+These columns are optional model signals. Missing previous World Cup experience must not be treated as an error, especially for younger players.
+
+| Column | Notes |
+| --- | --- |
+| `senior_national_team_caps` | Caps before the tournament. |
+| `major_tournament_experience` | Count or documented score for prior major senior tournaments. |
+| `is_world_cup_debutant` | True/false only if a real source supports it. Do not infer. |
+| `previous_world_cup_minutes` | World Cup minutes before this tournament. |
+| `previous_world_cup_matches` | World Cup appearances before this tournament. |
+| `previous_world_cup_impact_score` | Previous World Cup impact score if real prior tournament data exists. |
+
+### E. Target
+
+| Column | Notes |
+| --- | --- |
+| `actual_tournament_impact_score` | Real position-adjusted impact score for that player in that tournament, scaled 0-100. |
+
+The target should be calculated from real tournament match data. If match data is incomplete, leave the target blank until it can be supported.
+
+## Compliant Source Options
+
+The project should ingest CSV exports. Do not implement direct scraping from restricted football data providers.
+
+| Source type | Example use | Status | Notes |
+| --- | --- | --- | --- |
+| Public FIFA match reports and squad pages | Squads, minutes, match participation, basic tournament context | Public/open | Use manually curated or exported data where permitted. |
+| Kaggle or public datasets | Historical squads, appearances, goals, match-level summaries | Public/open if license permits | Check license and attribution requirements before use. |
+| StatsBomb Open Data | Event/match data where relevant tournaments are available | Public/open for included competitions | Use only tournaments actually covered by the open-data license. |
+| FBref-style exported CSVs | Club-season performance inputs | Permitted only if export/use is allowed | Do not scrape in the app. Store compliant local CSV exports. |
+| Transfermarkt-style market values | Pre-tournament market values | Manually curated/licensed/permitted only | Do not scrape restricted pages from the app. |
+| Licensed Opta/Wyscout/StatsBomb provider exports | Event, tracking, availability, tactical, or role-fit data | Licensed/commercial export | Use only if the user has the rights to use and store the export. |
+| Restricted provider websites | Direct scraping from Opta, WhoScored, Wyscout, or similar | Not allowed to scrape | The dashboard is an ingestion layer, not a scraper. |
+
+## Suggested Workflow
+
+1. Copy `data/historical/world_cup_player_training_data_template.csv`.
+2. Populate rows for World Cup 2014, 2018 and 2022 from real permitted sources.
+3. Keep one row per player per tournament.
+4. Leave unavailable optional fields blank.
+5. Keep all score fields on a 0-100 scale with documented formulas.
+6. Run:
+
+```bash
+python scripts/check_model_readiness.py
+python scripts/validate_project.py
+```
+
+7. If readiness passes and enough real rows exist, run:
+
+```bash
+python scripts/refresh_data.py
+```
+
+8. Open the dashboard. The Model tab will show the supervised model as available once training succeeds.
+
+## Modelling Readiness Rules
+
+The readiness script checks:
+
+- historical training file exists
+- template file exists
+- required columns are present
+- row count is high enough for a train/test split
+- tournament years are present
+- target values are available
+- score columns are inside 0-100
+- the supervised model can train with scikit-learn
+
+If historical rows are missing, the model remains disabled and the dashboard uses the transparent baseline fallback where current-player baseline fields exist.

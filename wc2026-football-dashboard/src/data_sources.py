@@ -25,6 +25,7 @@ NATIONAL_TEAM_CONTEXT_PATH = RAW_DATA_DIR / "national_team_context.csv"
 PLAYER_PERFORMANCE_INPUTS_PATH = RAW_DATA_DIR / "player_performance_inputs.csv"
 TOURNAMENT_MATCH_DATA_PATH = RAW_DATA_DIR / "tournament_match_data.csv"
 HISTORICAL_TRAINING_PATH = HISTORICAL_DATA_DIR / "world_cup_player_training_data.csv"
+HISTORICAL_TRAINING_TEMPLATE_PATH = HISTORICAL_DATA_DIR / "world_cup_player_training_data_template.csv"
 PROCESSED_DASHBOARD_PATH = PROCESSED_DATA_DIR / "player_dashboard_data.csv"
 
 
@@ -120,6 +121,9 @@ DATA_SOURCE_SPECS = {
         required_columns=(
             "tournament_year",
             "player_name",
+            "country",
+            "club",
+            "league",
             "age",
             "position",
             "market_value_before_tournament",

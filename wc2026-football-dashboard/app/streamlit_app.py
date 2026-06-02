@@ -15,7 +15,7 @@ if str(SRC_PATH) not in sys.path:
 from data_loader import load_player_data, refresh_player_data
 from data_pipeline import check_data_availability, get_last_refresh_timestamp, get_refresh_manifest
 from feature_engineering import VALUE_STRATEGIES, calculate_value_opportunity_score
-from model import FALLBACK_WARNING, train_expected_impact_model
+from model import FALLBACK_WARNING, check_historical_model_readiness, train_expected_impact_model
 from player_profiles import PLAYER_PROFILES, PROFILE_ELIGIBILITY, get_eligible_positions, get_profile_score_column
 from utils import format_currency, scouting_summary
 from visualisations import (
@@ -70,6 +70,11 @@ def get_data() -> pd.DataFrame:
 @st.cache_resource(show_spinner=False)
 def get_model_summary() -> dict[str, object]:
     return train_expected_impact_model()
+
+
+@st.cache_resource(show_spinner=False)
+def get_model_readiness() -> dict[str, object]:
+    return check_historical_model_readiness(attempt_training=False)
 
 
 def clear_app_cache() -> None:
@@ -690,8 +695,26 @@ def player_profile_page(df: pd.DataFrame) -> None:
     st.write(f"Risk reason: {player['risk_reason']}")
 
 
-def model_page(model_summary: dict[str, object]) -> None:
+def model_page(model_summary: dict[str, object], readiness: dict[str, object]) -> None:
     st.subheader("Expected Impact Model")
+    st.markdown("#### Historical model readiness")
+    readiness_rows = [
+        ("Historical training file", "available" if readiness.get("training_file_exists") else "missing"),
+        ("Template file", "available" if readiness.get("template_exists") else "missing"),
+        ("Training rows", readiness.get("row_count", 0)),
+        ("Target rows", readiness.get("target_available_rows", 0)),
+        ("Tournament years", ", ".join(str(year) for year in readiness.get("tournament_years_available", [])) or "none"),
+        ("Required columns", "available" if readiness.get("required_columns_present") else "missing"),
+        ("Can train", "yes" if readiness.get("can_train") else "no"),
+        ("Supervised model", "available" if model_summary.get("model_available") else "disabled"),
+    ]
+    st.dataframe(pd.DataFrame(readiness_rows, columns=["Check", "Status"]), hide_index=True, width="stretch")
+    if not readiness.get("can_train"):
+        st.warning(str(readiness.get("disabled_reason", "Historical training data is not ready.")))
+    if readiness.get("missing_required_columns"):
+        st.write("Missing required columns: " + ", ".join(str(col) for col in readiness["missing_required_columns"]))
+
+    st.markdown("#### Training result")
     if model_summary.get("model_available"):
         st.success(f"Supervised model available: {model_summary.get('selected_model_name')}")
         st.write(f"Training rows: {model_summary.get('training_row_count')}")
@@ -735,6 +758,7 @@ def main() -> None:
     render_refresh_controls()
     strategy, weights = select_strategy()
     model_summary = get_model_summary()
+    model_readiness = get_model_readiness()
     raw_df = get_data()
 
     st.title("WC 2026 Value Opportunity Dashboard")
@@ -776,7 +800,7 @@ def main() -> None:
     with tabs[5]:
         profile_rankings_page(filtered_df)
     with tabs[6]:
-        model_page(model_summary)
+        model_page(model_summary, model_readiness)
     with tabs[7]:
         methodology_page()
 

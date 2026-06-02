@@ -40,6 +40,8 @@ These fields are not required. Missing previous World Cup experience is normal f
 
 `data/historical/world_cup_player_training_data.csv` is optional until real curated historical data is available.
 
+Use `data/historical/world_cup_player_training_data_template.csv` as the schema-only starting point. It contains headers only and no data.
+
 When this file exists and has valid real rows, the supervised expected-impact model trains from previous World Cups. When it is missing, empty, or invalid, the model is disabled and the dashboard clearly labels any expected impact as a transparent baseline fallback when baseline inputs are available.
 
 The historical training file should use player-tournament observations. Each row should represent one player before one World Cup and their actual impact in that tournament, for example:

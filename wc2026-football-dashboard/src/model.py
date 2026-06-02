@@ -17,6 +17,7 @@ from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import OneHotEncoder, StandardScaler
 
 from data_sources import HISTORICAL_TRAINING_PATH
+from data_sources import HISTORICAL_TRAINING_TEMPLATE_PATH
 
 
 FALLBACK_WARNING = (
@@ -59,7 +60,25 @@ EXPECTED_IMPACT_FEATURES = [*BASE_EXPECTED_IMPACT_FEATURES, *OPTIONAL_EXPERIENCE
 REQUIRED_HISTORICAL_COLUMNS = [
     "tournament_year",
     "player_name",
+    "country",
+    "club",
+    "league",
     *BASE_EXPECTED_IMPACT_FEATURES,
+    "actual_tournament_impact_score",
+]
+
+EXPECTED_HISTORICAL_TOURNAMENT_YEARS = {2014, 2018, 2022}
+MIN_HISTORICAL_TRAINING_ROWS = 30
+HISTORICAL_SCORE_COLUMNS = [
+    "club_level_score",
+    "league_strength_score",
+    "expected_starter_score",
+    "national_team_strength",
+    "group_difficulty_score",
+    "injury_availability_score",
+    "recent_form_score",
+    "role_fit_score",
+    "previous_world_cup_impact_score",
     "actual_tournament_impact_score",
 ]
 
@@ -89,6 +108,133 @@ def load_historical_training_data(path: Path | str = HISTORICAL_TRAINING_PATH) -
     if data.empty:
         return pd.DataFrame()
     return data
+
+
+def _read_historical_file_with_columns(path: Path | str) -> pd.DataFrame:
+    """Read a historical CSV while preserving zero-row template columns."""
+
+    path = Path(path)
+    if not path.exists():
+        return pd.DataFrame()
+    try:
+        return pd.read_csv(path)
+    except pd.errors.EmptyDataError:
+        return pd.DataFrame()
+
+
+def check_historical_model_readiness(
+    path: Path | str = HISTORICAL_TRAINING_PATH,
+    template_path: Path | str = HISTORICAL_TRAINING_TEMPLATE_PATH,
+    attempt_training: bool = True,
+) -> dict[str, object]:
+    """Check whether real historical player-tournament data can train the model."""
+
+    path = Path(path)
+    template_path = Path(template_path)
+    readiness: dict[str, object] = {
+        "training_path": str(path),
+        "template_path": str(template_path),
+        "training_file_exists": path.exists(),
+        "template_exists": template_path.exists(),
+        "row_count": 0,
+        "required_columns_present": False,
+        "missing_required_columns": [],
+        "tournament_years_available": [],
+        "missing_expected_tournament_years": sorted(EXPECTED_HISTORICAL_TOURNAMENT_YEARS),
+        "target_available_rows": 0,
+        "target_valid_range": False,
+        "score_range_issues": [],
+        "can_train": False,
+        "model_available": False,
+        "model_status": MODEL_STATUS_DISABLED,
+        "disabled_reason": "Historical World Cup training data is missing.",
+        "warnings": [],
+        "errors": [],
+        "model_summary": None,
+    }
+
+    if not template_path.exists():
+        readiness["warnings"].append("Historical training template is missing.")
+
+    if not path.exists():
+        readiness["warnings"].append("Historical training file is missing.")
+        return readiness
+
+    data = _read_historical_file_with_columns(path)
+    readiness["row_count"] = int(len(data))
+    missing_required = [col for col in REQUIRED_HISTORICAL_COLUMNS if col not in data.columns]
+    readiness["missing_required_columns"] = missing_required
+    readiness["required_columns_present"] = not missing_required
+
+    if len(data) == 0:
+        readiness["disabled_reason"] = "Historical training file exists but has zero real player-tournament rows."
+        readiness["warnings"].append(readiness["disabled_reason"])
+        if missing_required:
+            readiness["warnings"].append("Zero-row historical file is missing required schema columns: " + ", ".join(missing_required))
+        return readiness
+
+    if missing_required:
+        readiness["disabled_reason"] = "Historical training file is missing required columns."
+        readiness["errors"].append(readiness["disabled_reason"] + " Missing: " + ", ".join(missing_required))
+        return readiness
+
+    years = sorted(pd.to_numeric(data["tournament_year"], errors="coerce").dropna().astype(int).unique().tolist())
+    readiness["tournament_years_available"] = years
+    readiness["missing_expected_tournament_years"] = sorted(EXPECTED_HISTORICAL_TOURNAMENT_YEARS - set(years))
+    if readiness["missing_expected_tournament_years"]:
+        readiness["warnings"].append(
+            "Expected historical tournaments not yet present: "
+            + ", ".join(str(year) for year in readiness["missing_expected_tournament_years"])
+        )
+
+    target = pd.to_numeric(data["actual_tournament_impact_score"], errors="coerce")
+    readiness["target_available_rows"] = int(target.notna().sum())
+    target_values = target.dropna()
+    readiness["target_valid_range"] = bool(not target_values.empty and target_values.between(0, 100).all())
+    if target_values.empty:
+        readiness["errors"].append("actual_tournament_impact_score has no real target values.")
+    elif not target_values.between(0, 100).all():
+        readiness["errors"].append("actual_tournament_impact_score contains values outside 0-100.")
+
+    score_range_issues: list[str] = []
+    for col in HISTORICAL_SCORE_COLUMNS:
+        if col not in data.columns:
+            continue
+        values = pd.to_numeric(data[col], errors="coerce").dropna()
+        if not values.empty and not values.between(0, 100).all():
+            score_range_issues.append(col)
+    readiness["score_range_issues"] = score_range_issues
+    if score_range_issues:
+        readiness["errors"].append("Score columns outside 0-100: " + ", ".join(score_range_issues))
+
+    if len(data) < MIN_HISTORICAL_TRAINING_ROWS:
+        readiness["warnings"].append(
+            f"At least {MIN_HISTORICAL_TRAINING_ROWS} valid real rows are recommended before training; found {len(data)}."
+        )
+    if target.nunique(dropna=True) < 2:
+        readiness["warnings"].append("Target has fewer than two distinct values, so the model cannot learn a relationship.")
+
+    no_errors = not readiness["errors"]
+    enough_rows = len(data) >= MIN_HISTORICAL_TRAINING_ROWS
+    enough_targets = readiness["target_available_rows"] >= MIN_HISTORICAL_TRAINING_ROWS and target.nunique(dropna=True) >= 2
+    readiness["can_train"] = bool(no_errors and enough_rows and enough_targets)
+
+    if readiness["can_train"] and attempt_training:
+        model_summary = train_expected_impact_model(data)
+        readiness["model_summary"] = model_summary
+        readiness["model_available"] = bool(model_summary.get("model_available", False))
+        readiness["model_status"] = str(model_summary.get("model_status", "unknown"))
+        if readiness["model_available"]:
+            readiness["disabled_reason"] = ""
+        else:
+            readiness["disabled_reason"] = str(model_summary.get("warning", "Model training failed."))
+            readiness["warnings"].append(readiness["disabled_reason"])
+    elif readiness["can_train"]:
+        readiness["disabled_reason"] = "Historical training data appears ready; training was not attempted."
+    elif not readiness["disabled_reason"] or readiness["disabled_reason"] == "Historical World Cup training data is missing.":
+        readiness["disabled_reason"] = "Historical training data is present but not yet trainable."
+
+    return readiness
 
 
 def _coalesce_feature(df: pd.DataFrame, target: str, aliases: list[str], default: Any = pd.NA) -> pd.Series:

@@ -165,10 +165,15 @@ Historical training data should use player-tournament observations. The required
 
 Previous World Cup experience fields are optional. They can improve the model if real curated data exists, but the supervised model must still work without them.
 
+Use `data/historical/world_cup_player_training_data_template.csv` as the schema-only starting point.
+
 | Column | Description | Required | Type | Example | Used for |
 | --- | --- | --- | --- | --- | --- |
 | `tournament_year` | Historical World Cup year. | Yes | number | 2022 | modelling |
 | `player_name` | Historical player name. | Yes | string | source player name | audit |
+| `country` | National team before the tournament. | Yes | string | country name | modelling, audit |
+| `club` | Club before the tournament. | Yes | string | club name | modelling, audit |
+| `league` | League before the tournament. | Yes | string | league name | modelling, audit |
 | `age` | Player age before that tournament. | Yes | number | 25 | modelling |
 | `position` | Normalised position before that tournament. | Yes | string | Central midfielder | modelling |
 | `market_value_before_tournament` | Real pre-tournament market value in euros. | Yes | number | 35000000 | modelling |

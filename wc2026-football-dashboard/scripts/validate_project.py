@@ -14,7 +14,8 @@ if str(SRC_PATH) not in sys.path:
     sys.path.insert(0, str(SRC_PATH))
 
 from data_pipeline import check_data_availability, load_processed_data
-from data_sources import DATA_SOURCE_SPECS
+from data_sources import DATA_SOURCE_SPECS, HISTORICAL_TRAINING_TEMPLATE_PATH
+from model import check_historical_model_readiness
 
 
 VALID_OUTCOMES = {"Pending", "Overperformed", "Met expectations", "Underperformed"}
@@ -60,6 +61,8 @@ def validate_project_structure(rows: list[ReportRow]) -> None:
         "data/raw",
         "data/historical",
         "data/processed",
+        "docs/historical_data_collection_plan.md",
+        "scripts/check_model_readiness.py",
         "README.md",
         "requirements.txt",
     ]
@@ -96,9 +99,6 @@ def validate_source_files(rows: list[ReportRow]) -> None:
                 message = f"{label} is missing. Add a compliant real CSV before relying on refresh."
             add(rows, level, "Data files", message)
             continue
-        if item["missing_columns"]:
-            add(rows, "FAIL", "Data files", f"{label} is missing columns: {', '.join(item['missing_columns'])}")
-            continue
         if item["rows"] == 0:
             if key == "tournament_match_data":
                 add(rows, "WARN", "Data files", f"{label} exists with zero rows. Actual impact is pending.")
@@ -107,7 +107,35 @@ def validate_source_files(rows: list[ReportRow]) -> None:
             else:
                 add(rows, "WARN", "Data files", f"{label} exists but is empty.")
             continue
+        if item["missing_columns"]:
+            add(rows, "FAIL", "Data files", f"{label} is missing columns: {', '.join(item['missing_columns'])}")
+            continue
         add(rows, "PASS", "Data files", f"{label} loads with {int(item['rows']):,} rows.")
+
+    if HISTORICAL_TRAINING_TEMPLATE_PATH.exists():
+        add(rows, "PASS", "Data files", "data/historical/world_cup_player_training_data_template.csv exists.")
+    else:
+        add(rows, "WARN", "Data files", "Historical training template is missing.")
+
+
+def validate_historical_model_readiness(rows: list[ReportRow]) -> None:
+    readiness = check_historical_model_readiness(attempt_training=False)
+    if readiness["row_count"] == 0:
+        add(rows, "WARN", "Historical model", str(readiness["disabled_reason"]))
+    elif readiness["errors"]:
+        for error in readiness["errors"]:
+            add(rows, "FAIL", "Historical model", str(error))
+    elif readiness["can_train"]:
+        add(rows, "PASS", "Historical model", "Historical training data appears ready for supervised modelling.")
+    else:
+        add(rows, "WARN", "Historical model", str(readiness["disabled_reason"]))
+
+    years = readiness.get("tournament_years_available", [])
+    if years:
+        add(rows, "PASS", "Historical model", "Historical years present: " + ", ".join(str(year) for year in years))
+    missing_years = readiness.get("missing_expected_tournament_years", [])
+    if missing_years and readiness["row_count"] > 0:
+        add(rows, "WARN", "Historical model", "Missing expected tournaments: " + ", ".join(str(year) for year in missing_years))
 
 
 def validate_processed_data(rows: list[ReportRow]) -> None:
@@ -199,6 +227,7 @@ def main() -> int:
     rows: list[ReportRow] = []
     validate_project_structure(rows)
     validate_source_files(rows)
+    validate_historical_model_readiness(rows)
     validate_processed_data(rows)
     validate_imports(rows)
     print_report(rows)
