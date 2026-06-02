@@ -13,21 +13,27 @@ if str(SRC_PATH) not in sys.path:
     sys.path.insert(0, str(SRC_PATH))
 
 from data_loader import load_player_data
-from model import confidence_level, explain_prediction, train_success_model
+from feature_engineering import VALUE_STRATEGIES, calculate_value_opportunity_score
+from model import FALLBACK_WARNING, confidence_level, explain_prediction, train_expected_impact_model
 from player_profiles import PLAYER_PROFILES, get_eligible_positions, get_profile_score_column
 from utils import format_currency, get_risks, get_strengths, scouting_summary, similar_players
 from visualisations import (
-    create_market_value_vs_score_chart,
+    create_age_vs_value_opportunity_chart,
+    create_expected_impact_distribution_chart,
+    create_market_value_vs_expected_impact_chart,
+    create_market_value_vs_value_opportunity_chart,
     create_metric_percentile_chart,
     create_percentile_bar_chart,
+    create_performance_delta_distribution_chart,
+    create_predicted_vs_actual_impact_chart,
     create_radar_chart,
-    create_success_probability_chart,
     create_top_players_chart,
+    create_top_value_opportunities_chart,
 )
 
 
 st.set_page_config(
-    page_title="WC 2026 Player Scouting Dashboard",
+    page_title="WC 2026 Recruitment Analytics Dashboard",
     layout="wide",
     initial_sidebar_state="expanded",
 )
@@ -62,8 +68,18 @@ def get_data() -> pd.DataFrame:
 
 
 @st.cache_resource(show_spinner=False)
-def get_model_summary(df: pd.DataFrame) -> dict[str, object]:
-    return train_success_model(df, model_type="logistic_regression")
+def get_model_summary() -> dict[str, object]:
+    return train_expected_impact_model()
+
+
+def select_strategy() -> str:
+    st.sidebar.header("Recruitment strategy")
+    return st.sidebar.radio(
+        "Strategy preset",
+        list(VALUE_STRATEGIES.keys()),
+        index=0,
+        help="Updates the business ranking score without changing the expected-impact model.",
+    )
 
 
 def apply_filters(df: pd.DataFrame) -> pd.DataFrame:
@@ -82,24 +98,11 @@ def apply_filters(df: pd.DataFrame) -> pd.DataFrame:
     selected_countries = st.sidebar.multiselect("Country", sorted(df["country"].unique()))
     selected_clubs = st.sidebar.multiselect("Club", sorted(df["club"].unique()))
     selected_leagues = st.sidebar.multiselect("League", sorted(df["league"].unique()))
-    if "group" in df.columns:
-        selected_groups = st.sidebar.multiselect("World Cup group", sorted(df["group"].dropna().unique()))
-    else:
-        selected_groups = []
-    if "injury_status" in df.columns:
-        selected_injury_status = st.sidebar.multiselect(
-            "Injury status",
-            sorted(df["injury_status"].dropna().unique()),
-        )
-    else:
-        selected_injury_status = []
-    if "market_value_source" in df.columns:
-        selected_value_sources = st.sidebar.multiselect(
-            "Market value source",
-            sorted(df["market_value_source"].dropna().unique()),
-        )
-    else:
-        selected_value_sources = []
+    selected_groups = st.sidebar.multiselect("World Cup group", sorted(df.get("group", pd.Series()).dropna().unique()))
+    selected_outcomes = st.sidebar.multiselect(
+        "Performance outcome",
+        sorted(df["performance_outcome"].dropna().unique()),
+    )
 
     age_range = st.sidebar.slider(
         "Age range",
@@ -114,15 +117,15 @@ def apply_filters(df: pd.DataFrame) -> pd.DataFrame:
         (float(df["market_value_eur"].min() / 1_000_000), float(df["market_value_eur"].max() / 1_000_000)),
         step=0.5,
     )
-    minutes_range = st.sidebar.slider(
-        "Minutes played range",
-        int(df["minutes"].min()),
-        int(df["minutes"].max()),
-        (int(df["minutes"].min()), int(df["minutes"].max())),
-        step=50,
+    impact_range = st.sidebar.slider(
+        "Pre-tournament expected impact",
+        0,
+        100,
+        (0, 100),
+        step=1,
     )
-    probability_range = st.sidebar.slider(
-        "Predicted World Cup success probability",
+    opportunity_range = st.sidebar.slider(
+        "Value opportunity score",
         0,
         100,
         (0, 100),
@@ -140,69 +143,56 @@ def apply_filters(df: pd.DataFrame) -> pd.DataFrame:
         filtered = filtered[filtered["league"].isin(selected_leagues)]
     if selected_groups:
         filtered = filtered[filtered["group"].isin(selected_groups)]
-    if selected_injury_status:
-        filtered = filtered[filtered["injury_status"].isin(selected_injury_status)]
-    if selected_value_sources:
-        filtered = filtered[filtered["market_value_source"].isin(selected_value_sources)]
+    if selected_outcomes:
+        filtered = filtered[filtered["performance_outcome"].isin(selected_outcomes)]
 
     filtered = filtered[
         filtered["age"].between(*age_range)
         & filtered["market_value_eur"].between(value_range[0] * 1_000_000, value_range[1] * 1_000_000)
-        & filtered["minutes"].between(*minutes_range)
-        & filtered["success_probability"].between(*probability_range)
+        & filtered["pre_tournament_expected_impact_score"].between(*impact_range)
+        & filtered["value_opportunity_score"].between(*opportunity_range)
     ]
     return filtered
 
 
-def display_player_table(df: pd.DataFrame) -> None:
+def display_shortlist_table(df: pd.DataFrame) -> None:
+    st.markdown("#### Pre-tournament recruitment shortlist")
     table_cols = [
         "player_name",
         "country",
-        "group",
         "club",
         "league",
         "age",
         "position",
         "best_profile",
         "market_value_eur",
-        "market_value_source",
-        "minutes",
-        "goals",
-        "assists",
-        "caps",
-        "tactical_fit_score",
-        "injury_availability_score",
-        "draw_context_score",
-        "progression_score",
-        "creativity_score",
-        "defensive_score",
-        "overall_score",
-        "success_probability",
+        "pre_tournament_expected_impact_score",
+        "baseline_expected_impact_score",
+        "value_efficiency_score",
+        "value_opportunity_score",
+        "recommendation",
+        "actual_tournament_impact_score",
+        "performance_delta",
+        "performance_outcome",
     ]
     table = df[[col for col in table_cols if col in df.columns]].rename(
         columns={
             "player_name": "Player",
             "country": "Country",
-            "group": "Group",
             "club": "Club",
             "league": "League",
             "age": "Age",
             "position": "Position",
             "best_profile": "Profile",
             "market_value_eur": "Market value",
-            "market_value_source": "Market value source",
-            "minutes": "Minutes",
-            "goals": "Goals",
-            "assists": "Assists",
-            "caps": "Caps",
-            "tactical_fit_score": "Tactical fit",
-            "injury_availability_score": "Injury availability",
-            "draw_context_score": "Draw context",
-            "progression_score": "Progression score",
-            "creativity_score": "Creativity score",
-            "defensive_score": "Defensive score",
-            "overall_score": "Overall profile score",
-            "success_probability": "Predicted success probability",
+            "pre_tournament_expected_impact_score": "Pre-tournament expected impact",
+            "baseline_expected_impact_score": "Baseline expected impact",
+            "value_efficiency_score": "Value efficiency",
+            "value_opportunity_score": "Value opportunity score",
+            "recommendation": "Recommendation",
+            "actual_tournament_impact_score": "Actual tournament impact",
+            "performance_delta": "Performance delta",
+            "performance_outcome": "Outcome",
         }
     )
     st.dataframe(
@@ -211,71 +201,86 @@ def display_player_table(df: pd.DataFrame) -> None:
         hide_index=True,
         column_config={
             "Market value": st.column_config.NumberColumn(format="EUR %.0f"),
-            "Predicted success probability": st.column_config.ProgressColumn(
+            "Pre-tournament expected impact": st.column_config.ProgressColumn(
                 min_value=0,
                 max_value=100,
-                format="%.1f%%",
+                format="%.1f",
+            ),
+            "Baseline expected impact": st.column_config.ProgressColumn(
+                min_value=0,
+                max_value=100,
+                format="%.1f",
+            ),
+            "Value opportunity score": st.column_config.ProgressColumn(
+                min_value=0,
+                max_value=100,
+                format="%.1f",
             ),
         },
     )
 
 
-def overview_page(df: pd.DataFrame, filtered_df: pd.DataFrame) -> None:
-    st.subheader("WC 2026 Player Scouting & Performance Dashboard")
+def overview_page(df: pd.DataFrame, filtered_df: pd.DataFrame, model_summary: dict[str, object]) -> None:
+    st.subheader("Pre-Tournament Recruitment Analytics")
     st.write(
-        "This dashboard is a football analytics tool built to support player scouting and performance analysis "
-        "ahead of the 2026 FIFA World Cup. It allows users to explore player profiles, compare players, filter "
-        "by market value and position, and estimate whether a player is likely to have a strong World Cup performance "
-        "using real final-squad, market, ranking, draw, availability and recent-performance inputs."
+        "This dashboard is built for an English club recruitment workflow before the 2026 FIFA World Cup. "
+        "It ranks players by expected tournament impact and value opportunity, then keeps the structure ready "
+        "to validate those predictions against actual World Cup performance when match data becomes available."
     )
+    if not model_summary.get("model_available"):
+        st.warning(FALLBACK_WARNING)
 
     kpi_cols = st.columns(6)
     kpi_cols[0].metric("Players", f"{len(df):,}")
     kpi_cols[1].metric("Countries", f"{df['country'].nunique():,}")
     kpi_cols[2].metric("Avg market value", format_currency(df["market_value_eur"].mean()))
-    kpi_cols[3].metric("Avg age", f"{df['age'].mean():.1f}")
-    kpi_cols[4].metric("Profiles", f"{len(PLAYER_PROFILES)}")
-    kpi_cols[5].metric("Filtered players", f"{len(filtered_df):,}")
+    kpi_cols[3].metric("Avg expected impact", f"{df['pre_tournament_expected_impact_score'].mean():.1f}")
+    kpi_cols[4].metric("Priority targets", f"{(df['recommendation'] == 'Priority target').sum():,}")
+    kpi_cols[5].metric("Actual outcomes", f"{df['actual_tournament_impact_score'].notna().sum():,}")
     if "data_refresh_date" in df.columns:
         st.caption(f"Dataset refresh: {df['data_refresh_date'].dropna().iloc[0]}")
 
-    st.divider()
-    left, right = st.columns([1.2, 1])
+    left, right = st.columns(2)
     with left:
-        st.markdown("#### Market value vs performance")
-        st.plotly_chart(create_market_value_vs_score_chart(filtered_df), width="stretch")
+        st.markdown("#### Market value vs expected impact")
+        st.plotly_chart(create_market_value_vs_expected_impact_chart(filtered_df), width="stretch")
     with right:
-        st.markdown("#### Top predicted performers")
-        top_cols = ["player_name", "country", "position", "club", "best_profile", "success_probability"]
-        st.dataframe(
-            df.nlargest(10, "success_probability")[top_cols].rename(
-                columns={
-                    "player_name": "Player",
-                    "country": "Country",
-                    "position": "Position",
-                    "club": "Club",
-                    "best_profile": "Profile",
-                    "success_probability": "Success probability",
-                }
-            ),
-            width="stretch",
-            hide_index=True,
-        )
+        st.markdown("#### Top value opportunities")
+        st.plotly_chart(create_top_value_opportunities_chart(filtered_df), width="stretch")
 
-    st.markdown("#### Success probability distribution")
-    st.plotly_chart(create_success_probability_chart(filtered_df), width="stretch")
+    lower_left, lower_right = st.columns(2)
+    with lower_left:
+        st.markdown("#### Market value vs value opportunity")
+        st.plotly_chart(create_market_value_vs_value_opportunity_chart(filtered_df), width="stretch")
+    with lower_right:
+        st.markdown("#### Expected impact distribution")
+        st.plotly_chart(create_expected_impact_distribution_chart(filtered_df), width="stretch")
 
 
-def player_search_page(filtered_df: pd.DataFrame) -> None:
-    st.subheader("Player Search")
-    st.caption("Use the sidebar filters to narrow the player pool by role, market, playing time, and prediction bands.")
+def shortlist_page(filtered_df: pd.DataFrame) -> None:
+    st.subheader("Recruitment Shortlist")
     sort_col = st.selectbox(
         "Sort players by",
-        ["success_probability", "overall_score", "best_profile_score", "market_value_eur", "minutes", "age"],
+        [
+            "value_opportunity_score",
+            "pre_tournament_expected_impact_score",
+            "value_efficiency_score",
+            "baseline_expected_impact_score",
+            "market_value_eur",
+            "age",
+        ],
         format_func=lambda value: value.replace("_", " ").title(),
     )
     sorted_df = filtered_df.sort_values(sort_col, ascending=False)
-    display_player_table(sorted_df)
+    display_shortlist_table(sorted_df)
+
+    chart_left, chart_right = st.columns(2)
+    with chart_left:
+        st.markdown("#### Age vs value opportunity")
+        st.plotly_chart(create_age_vs_value_opportunity_chart(sorted_df), width="stretch")
+    with chart_right:
+        st.markdown("#### Market value vs value opportunity")
+        st.plotly_chart(create_market_value_vs_value_opportunity_chart(sorted_df), width="stretch")
 
 
 def player_profile_page(df: pd.DataFrame, filtered_df: pd.DataFrame) -> None:
@@ -287,24 +292,28 @@ def player_profile_page(df: pd.DataFrame, filtered_df: pd.DataFrame) -> None:
     )
     player = df[df["player_name"] == selected_player].iloc[0]
 
-    top = st.columns([1.25, 1, 1, 1])
+    top = st.columns([1.2, 1, 1, 1, 1])
     top[0].metric("Player", player["player_name"])
     top[1].metric("Market value", format_currency(player["market_value_eur"]))
-    top[2].metric("Age", f"{int(player['age'])}")
-    top[3].metric("Success probability", f"{player['success_probability']:.1f}%")
+    top[2].metric("Expected impact", f"{player['pre_tournament_expected_impact_score']:.1f}/100")
+    top[3].metric("Value opportunity", f"{player['value_opportunity_score']:.1f}/100")
+    top[4].metric("Outcome", player["performance_outcome"])
     if "market_value_source" in player.index:
         st.caption(f"Market value source: {player['market_value_source']}")
 
-    info_cols = st.columns(4)
+    info_cols = st.columns(5)
     info_cols[0].metric("Country", player["country"])
     info_cols[1].metric("Club", player["club"])
     info_cols[2].metric("Position", player["position"])
     info_cols[3].metric("Profile", player["best_profile"])
-    context_cols = st.columns(4)
-    context_cols[0].metric("Group", player.get("group", ""))
-    context_cols[1].metric("Tactical fit", f"{player.get('tactical_fit_score', 0):.1f}/100")
-    context_cols[2].metric("Injury availability", f"{player.get('injury_availability_score', 0):.1f}/100")
-    context_cols[3].metric("Draw context", f"{player.get('draw_context_score', 0):.1f}/100")
+    info_cols[4].metric("Confidence", confidence_level(player))
+
+    context_cols = st.columns(5)
+    context_cols[0].metric("Baseline impact", f"{player['baseline_expected_impact_score']:.1f}/100")
+    context_cols[1].metric("Value efficiency", f"{player['value_efficiency_score']:.1f}/100")
+    context_cols[2].metric("Tactical fit", f"{player.get('role_fit_score', 0):.1f}/100")
+    context_cols[3].metric("Availability", f"{player.get('availability_score', 0):.1f}/100")
+    context_cols[4].metric("Draw context", f"{player.get('tournament_draw_score', 0):.1f}/100")
 
     st.markdown(f"<div class='scout-note'>{scouting_summary(player)}</div>", unsafe_allow_html=True)
 
@@ -334,7 +343,6 @@ def player_profile_page(df: pd.DataFrame, filtered_df: pd.DataFrame) -> None:
         st.markdown("#### Versus positional average")
         st.plotly_chart(create_percentile_bar_chart(player, df, score_metrics), width="stretch")
 
-    st.markdown("#### Metric percentiles")
     percentile_metrics = [
         "non_penalty_goals",
         "xg_proxy",
@@ -347,6 +355,7 @@ def player_profile_page(df: pd.DataFrame, filtered_df: pd.DataFrame) -> None:
         "interceptions",
         "pass_completion_pct",
     ]
+    st.markdown("#### Metric percentiles")
     st.plotly_chart(create_metric_percentile_chart(player, percentile_metrics), width="stretch")
 
 
@@ -367,7 +376,8 @@ def profile_rankings_page(filtered_df: pd.DataFrame) -> None:
         "age",
         "position",
         score_col,
-        "success_probability",
+        "pre_tournament_expected_impact_score",
+        "value_opportunity_score",
     ]
     st.dataframe(
         top_players[display_cols].rename(
@@ -379,7 +389,8 @@ def profile_rankings_page(filtered_df: pd.DataFrame) -> None:
                 "age": "Age",
                 "position": "Position",
                 score_col: "Profile score",
-                "success_probability": "Success probability",
+                "pre_tournament_expected_impact_score": "Expected impact",
+                "value_opportunity_score": "Value opportunity",
             }
         ),
         width="stretch",
@@ -387,40 +398,38 @@ def profile_rankings_page(filtered_df: pd.DataFrame) -> None:
     )
 
 
-def prediction_page(df: pd.DataFrame, filtered_df: pd.DataFrame) -> None:
-    st.subheader("World Cup Success Prediction")
-    st.info(
-        "This is a scouting-support model, not a betting model. It uses live World Cup appearance outcomes when "
-        "available and falls back to a pre-tournament success target before enough tournament matches have been played."
-    )
-
-    model_summary = get_model_summary(df)
-    auc = model_summary.get("auc")
-    if auc:
-        target_label = model_summary.get("target_source", "pre-tournament target")
-        st.caption(f"Logistic regression trained against the {target_label}. Validation ROC AUC: {auc:.2f}.")
+def expected_impact_page(df: pd.DataFrame, filtered_df: pd.DataFrame, model_summary: dict[str, object]) -> None:
+    st.subheader("Expected Impact Model")
+    if model_summary.get("model_available"):
+        st.success("Historical training data found. Expected impact is using the supervised model output.")
+        metrics = model_summary.get("metrics")
+        if isinstance(metrics, pd.DataFrame) and not metrics.empty:
+            st.markdown("#### Model evaluation")
+            st.dataframe(metrics, width="stretch", hide_index=True)
+    else:
+        st.warning(FALLBACK_WARNING)
 
     player_pool = filtered_df if not filtered_df.empty else df
     selected_player = st.selectbox(
-        "Select player for prediction explanation",
-        player_pool.sort_values("success_probability", ascending=False)["player_name"].tolist(),
-        key="prediction_player",
+        "Select player for model explanation",
+        player_pool.sort_values("value_opportunity_score", ascending=False)["player_name"].tolist(),
+        key="expected_impact_player",
     )
     player = df[df["player_name"] == selected_player].iloc[0]
     explanation = explain_prediction(player)
 
     metric_cols = st.columns(6)
-    metric_cols[0].metric("Predicted success probability", f"{player['success_probability']:.1f}%")
-    metric_cols[1].metric("Success score", f"{player['success_score']:.1f}/100")
-    metric_cols[2].metric("Confidence", confidence_level(player))
-    metric_cols[3].metric("Profile", player["best_profile"])
-    metric_cols[4].metric("Tactical fit", f"{player.get('tactical_fit_score', 0):.1f}")
-    metric_cols[5].metric("Draw", f"{player.get('draw_context_score', 0):.1f}")
+    metric_cols[0].metric("Expected impact", f"{player['pre_tournament_expected_impact_score']:.1f}/100")
+    metric_cols[1].metric("Baseline impact", f"{player['baseline_expected_impact_score']:.1f}/100")
+    metric_cols[2].metric("Value opportunity", f"{player['value_opportunity_score']:.1f}/100")
+    metric_cols[3].metric("Actual impact", "Pending" if pd.isna(player["actual_tournament_impact_score"]) else f"{player['actual_tournament_impact_score']:.1f}/100")
+    metric_cols[4].metric("Delta", "Pending" if pd.isna(player["performance_delta"]) else f"{player['performance_delta']:.1f}")
+    metric_cols[5].metric("Outcome", player["performance_outcome"])
 
+    st.markdown("#### Baseline explanation factors")
     factors = pd.DataFrame(explanation["all_factors"]).rename(
         columns={"factor": "Factor", "score": "Score", "weight": "Weight", "contribution": "Weighted contribution"}
     )
-    st.markdown("#### Explanation factors")
     st.dataframe(factors, width="stretch", hide_index=True)
 
     pos_col, neg_col = st.columns(2)
@@ -437,6 +446,14 @@ def prediction_page(df: pd.DataFrame, filtered_df: pd.DataFrame) -> None:
         else:
             st.write("No major negative factors from the current model inputs.")
 
+    chart_left, chart_right = st.columns(2)
+    with chart_left:
+        st.markdown("#### Predicted vs actual impact")
+        st.plotly_chart(create_predicted_vs_actual_impact_chart(filtered_df), width="stretch")
+    with chart_right:
+        st.markdown("#### Performance delta distribution")
+        st.plotly_chart(create_performance_delta_distribution_chart(filtered_df), width="stretch")
+
     st.markdown("#### Similar players")
     similar = similar_players(df, player)
     st.dataframe(
@@ -447,8 +464,8 @@ def prediction_page(df: pd.DataFrame, filtered_df: pd.DataFrame) -> None:
                 "club",
                 "position",
                 "best_profile",
-                "overall_score",
-                "success_probability",
+                "pre_tournament_expected_impact_score",
+                "value_opportunity_score",
             ]
         ].rename(
             columns={
@@ -457,8 +474,8 @@ def prediction_page(df: pd.DataFrame, filtered_df: pd.DataFrame) -> None:
                 "club": "Club",
                 "position": "Position",
                 "best_profile": "Profile",
-                "overall_score": "Overall score",
-                "success_probability": "Success probability",
+                "pre_tournament_expected_impact_score": "Expected impact",
+                "value_opportunity_score": "Value opportunity",
             }
         ),
         width="stretch",
@@ -467,47 +484,53 @@ def prediction_page(df: pd.DataFrame, filtered_df: pd.DataFrame) -> None:
 
     importance = model_summary.get("feature_importance")
     if isinstance(importance, pd.DataFrame) and not importance.empty:
-        st.markdown("#### Model feature importance")
-        st.dataframe(importance.head(10), width="stretch", hide_index=True)
+        st.markdown("#### Feature importance")
+        st.dataframe(importance.head(15), width="stretch", hide_index=True)
 
 
 def methodology_page() -> None:
     st.subheader("Methodology")
     st.markdown(
         """
-**Data sources**
+**Main modelling objective**
 
-The dashboard uses real 2026 World Cup final-squad tables, Transfermarkt dataset player values and national-team metadata, recent Transfermarkt appearance records, and the openfootball 2026 match schedule.
+The main prediction is designed to come from a supervised model trained on historical World Cup player data from 2014, 2018 and 2022. Each historical row should represent one player before a tournament, with pre-tournament features mapped to the actual tournament impact they produced.
 
-**Metric definitions**
+**Historical training data**
 
-Recent minutes, goals, assists, caps, market value, squad context, injury availability, group draw and opponent strength are converted into role-aware scouting scores. Percentiles are calculated within position groups, so defenders, midfielders, forwards, and goalkeepers are judged against relevant peers.
+The app checks `data/historical/world_cup_player_training_data.csv`. If that file contains historical rows and an `actual_tournament_impact_score` target, the dashboard trains Ridge Regression, Random Forest and Gradient Boosting regressors, evaluates MAE, RMSE and R-squared, and uses the selected model to produce `pre_tournament_expected_impact_score`.
 
-**Profiles**
+**Baseline fallback**
 
-Each football profile uses a weighted score across relevant percentile metrics. Negative turnover weights are interpreted as lower-turnover players scoring better.
+The manual weighted score is only a transparent fallback named `baseline_expected_impact_score`:
 
-**Success probability**
+`0.25 * current_performance_score + 0.20 * expected_minutes_score + 0.15 * role_fit_score + 0.15 * national_team_context_score + 0.10 * tournament_draw_score + 0.10 * availability_score + 0.05 * age_upside_score`
 
-The pre-tournament model uses this transparent success score:
+No true model is possible until historical training data is collected. When the historical file is unavailable, the dashboard shows a warning and uses the baseline score for expected impact.
 
-`0.18 * current_performance_score + 0.15 * expected_minutes_score + 0.14 * tactical_fit_score + 0.13 * role_fit_score + 0.12 * injury_availability_score + 0.10 * national_team_strength_score + 0.08 * draw_context_score + 0.05 * age_curve_score + 0.04 * club_level_score + 0.04 * recent_form_score + 0.03 * final_squad_selection_score + 0.01 * market_value_score`
+**Actual tournament impact**
 
-When live World Cup appearance data becomes available, the model target switches to actual tournament success: minutes played and direct goal contribution thresholds from the live competition feed.
+`actual_tournament_impact_score` is a position-adjusted 0-100 outcome score from World Cup match data. It uses tournament minutes, starts, goals, assists, shots, key passes, tackles, interceptions, saves, clean sheets and match ratings when available. Players are ranked within position groups where possible.
 
-**Live refresh**
+**Prediction validation**
 
-Run `python src/real_data.py` to refresh squads, player metadata, market values, draw context, injury availability inputs and live tournament targets.
+`performance_delta = actual_tournament_impact_score - pre_tournament_expected_impact_score`. Pending players have no live match data yet. Once actual impact exists, players are classified as Overperformed, Met expectations or Underperformed.
+
+**Value opportunity**
+
+`value_opportunity_score` is a business ranking metric for recruitment strategy, not a pure prediction. It combines expected impact, value efficiency, age resale, role fit and availability. The strategy preset changes these business weights while leaving the model prediction untouched.
         """
     )
 
 
 def main() -> None:
-    df = get_data()
+    model_summary = get_model_summary()
+    strategy = select_strategy()
+    df = calculate_value_opportunity_score(get_data(), strategy=strategy)
     filtered_df = apply_filters(df)
 
     st.title("WC 2026 Player Scouting & Performance Dashboard")
-    st.caption("A portfolio-ready football analytics dashboard for scouting, role profiling, and World Cup performance triage.")
+    st.caption("Pre-tournament recruitment analytics for expected impact, value opportunity and prediction validation.")
 
     if filtered_df.empty:
         st.warning("No players match the current filters. Widen the sidebar filters to continue.")
@@ -516,23 +539,23 @@ def main() -> None:
     tabs = st.tabs(
         [
             "Overview",
-            "Player Search",
+            "Recruitment Shortlist",
             "Player Profile",
             "Profile Rankings",
-            "Success Prediction",
+            "Expected Impact Model",
             "Methodology",
         ]
     )
     with tabs[0]:
-        overview_page(df, filtered_df)
+        overview_page(df, filtered_df, model_summary)
     with tabs[1]:
-        player_search_page(filtered_df)
+        shortlist_page(filtered_df)
     with tabs[2]:
         player_profile_page(df, filtered_df)
     with tabs[3]:
         profile_rankings_page(filtered_df)
     with tabs[4]:
-        prediction_page(df, filtered_df)
+        expected_impact_page(df, filtered_df, model_summary)
     with tabs[5]:
         methodology_page()
 

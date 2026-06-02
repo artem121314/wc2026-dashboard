@@ -43,6 +43,31 @@ CORE_PERCENTILE_METRICS = [
 ]
 
 
+VALUE_STRATEGIES = {
+    "Balanced club": {
+        "pre_tournament_expected_impact_score": 0.40,
+        "value_efficiency_score": 0.25,
+        "age_resale_score": 0.15,
+        "role_fit_score": 0.10,
+        "availability_score": 0.10,
+    },
+    "Value-focused club": {
+        "pre_tournament_expected_impact_score": 0.25,
+        "value_efficiency_score": 0.35,
+        "age_resale_score": 0.25,
+        "role_fit_score": 0.08,
+        "availability_score": 0.07,
+    },
+    "Impact-focused club": {
+        "pre_tournament_expected_impact_score": 0.55,
+        "value_efficiency_score": 0.12,
+        "age_resale_score": 0.08,
+        "role_fit_score": 0.17,
+        "availability_score": 0.08,
+    },
+}
+
+
 def clip_score(values: pd.Series | np.ndarray | float) -> pd.Series | np.ndarray | float:
     """Keep score-like values inside a 0-100 range."""
 
@@ -297,8 +322,8 @@ def calculate_age_curve_score(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
-def calculate_success_score(df: pd.DataFrame) -> pd.DataFrame:
-    """Calculate pre-tournament success score and probability-like output."""
+def calculate_expected_impact_scores(df: pd.DataFrame) -> pd.DataFrame:
+    """Calculate transparent baseline expected-impact components."""
 
     df = df.copy()
     for col in [
@@ -320,23 +345,90 @@ def calculate_success_score(df: pd.DataFrame) -> pd.DataFrame:
 
     df["current_performance_score"] = df["overall_score"]
     df["role_fit_score"] = df["best_profile_score"]
-    df["success_score"] = (
-        0.18 * df["current_performance_score"]
-        + 0.15 * df["expected_minutes_score"]
-        + 0.14 * df["tactical_fit_score"]
-        + 0.13 * df["role_fit_score"]
-        + 0.12 * df["injury_availability_score"]
-        + 0.10 * df["national_team_strength"]
-        + 0.08 * df["draw_context_score"]
-        + 0.05 * df["age_curve_score"]
-        + 0.04 * df["club_level_score"]
-        + 0.04 * df["recent_form_score"]
-        + 0.03 * df["final_squad_selection_score"]
-        + 0.01 * df["market_value_score"]
+    df["national_team_context_score"] = df["national_team_strength"]
+    df["tournament_draw_score"] = df["draw_context_score"]
+    df["availability_score"] = df["injury_availability_score"]
+    df["age_upside_score"] = df["age_curve_score"]
+    df["baseline_expected_impact_score"] = (
+        0.25 * df["current_performance_score"]
+        + 0.20 * df["expected_minutes_score"]
+        + 0.15 * df["role_fit_score"]
+        + 0.15 * df["national_team_context_score"]
+        + 0.10 * df["tournament_draw_score"]
+        + 0.10 * df["availability_score"]
+        + 0.05 * df["age_upside_score"]
     ).round(1)
 
-    probability = 100 / (1 + np.exp(-(df["success_score"] - 58) / 10))
-    df["success_probability"] = clip_score(probability).round(1)
+    if "pre_tournament_expected_impact_score" not in df.columns:
+        df["pre_tournament_expected_impact_score"] = df["baseline_expected_impact_score"]
+    else:
+        df["pre_tournament_expected_impact_score"] = (
+            pd.to_numeric(df["pre_tournament_expected_impact_score"], errors="coerce")
+            .fillna(df["baseline_expected_impact_score"])
+            .clip(0, 100)
+            .round(1)
+        )
+
+    return df
+
+
+def calculate_age_resale_score(df: pd.DataFrame) -> pd.DataFrame:
+    """Estimate recruitment resale upside from age profile."""
+
+    df = df.copy()
+    age = pd.to_numeric(df["age"], errors="coerce").fillna(27)
+    df["age_resale_score"] = np.select(
+        [
+            age <= 20,
+            age.between(21, 24),
+            age.between(25, 27),
+            age.between(28, 30),
+            age >= 31,
+        ],
+        [92, 100, 78, 52, 28],
+        default=60,
+    ).astype(float)
+    return df
+
+
+def calculate_value_efficiency_score(df: pd.DataFrame) -> pd.DataFrame:
+    """Score expected impact relative to market value without inventing values."""
+
+    df = df.copy()
+    impact = pd.to_numeric(df["pre_tournament_expected_impact_score"], errors="coerce").fillna(
+        df.get("baseline_expected_impact_score", 50)
+    )
+    market_m = pd.to_numeric(df["market_value_eur"], errors="coerce").fillna(0) / 1_000_000
+    efficiency_raw = impact / np.sqrt(market_m.clip(lower=0.75))
+    df["value_efficiency_score"] = efficiency_raw.rank(pct=True).fillna(0.5).mul(100).round(1)
+    df.loc[market_m <= 0, "value_efficiency_score"] = 35.0
+    return df
+
+
+def calculate_value_opportunity_score(df: pd.DataFrame, strategy: str = "Balanced club") -> pd.DataFrame:
+    """Calculate club strategy ranking score for recruitment shortlists."""
+
+    df = df.copy()
+    df = calculate_age_resale_score(df)
+    df = calculate_value_efficiency_score(df)
+    if "availability_score" not in df.columns:
+        df["availability_score"] = df["injury_availability_score"] if "injury_availability_score" in df.columns else 100
+    if "role_fit_score" not in df.columns:
+        df["role_fit_score"] = df["best_profile_score"] if "best_profile_score" in df.columns else 50
+
+    weights = VALUE_STRATEGIES.get(strategy, VALUE_STRATEGIES["Balanced club"])
+    score = pd.Series(0.0, index=df.index)
+    for col, weight in weights.items():
+        values = df[col] if col in df.columns else pd.Series(50, index=df.index)
+        score = score + pd.to_numeric(values, errors="coerce").fillna(50) * weight
+    df["value_opportunity_score"] = clip_score(score).round(1)
+    df["recommendation"] = pd.cut(
+        df["value_opportunity_score"],
+        bins=[-0.1, 55, 68, 80, 100],
+        labels=["Low priority", "Monitor", "Shortlist", "Priority target"],
+    ).astype(str)
+    medical_mask = pd.to_numeric(df.get("availability_score", 100), errors="coerce").fillna(100) < 45
+    df.loc[medical_mask & (df["recommendation"] != "Low priority"), "recommendation"] = "Medical watch"
     return df
 
 

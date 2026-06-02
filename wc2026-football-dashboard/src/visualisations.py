@@ -16,7 +16,9 @@ METRIC_LABELS = {
     "defensive_score": "Defensive",
     "possession_score": "Possession",
     "overall_score": "Overall",
-    "success_probability": "Success probability",
+    "pre_tournament_expected_impact_score": "Expected impact",
+    "baseline_expected_impact_score": "Baseline expected impact",
+    "value_opportunity_score": "Value opportunity",
     "xg_proxy": "xG proxy",
     "xa_proxy": "xA proxy",
 }
@@ -131,40 +133,155 @@ def create_top_players_chart(df: pd.DataFrame, profile: str) -> go.Figure:
         x=score_col,
         color="position",
         orientation="h",
-        hover_data=["country", "club", "league", "age", "market_value_eur", "success_probability"],
+        hover_data=["country", "club", "league", "age", "market_value_eur", "pre_tournament_expected_impact_score"],
         labels={score_col: "Profile score", "player_name": "Player"},
     )
     fig.update_layout(height=620, margin=dict(l=10, r=20, t=20, b=20), legend_title_text="Position")
     return fig
 
 
-def create_market_value_vs_score_chart(df: pd.DataFrame) -> go.Figure:
-    """Scatter plot of market value against overall profile score."""
+def create_market_value_vs_expected_impact_chart(df: pd.DataFrame) -> go.Figure:
+    """Scatter plot of market value against expected World Cup impact."""
 
     fig = px.scatter(
         df,
         x="market_value_eur",
-        y="overall_score",
+        y="pre_tournament_expected_impact_score",
         color="position",
         size="minutes",
         hover_name="player_name",
-        hover_data=["country", "club", "best_profile", "success_probability"],
-        labels={"market_value_eur": "Market value (EUR)", "overall_score": "Overall profile score"},
+        hover_data=["country", "club", "best_profile", "value_opportunity_score"],
+        labels={
+            "market_value_eur": "Market value (EUR)",
+            "pre_tournament_expected_impact_score": "Pre-tournament expected impact",
+        },
     )
     fig.update_layout(height=470, margin=dict(l=10, r=20, t=20, b=20), xaxis_tickprefix="EUR ")
     return fig
 
 
-def create_success_probability_chart(df: pd.DataFrame) -> go.Figure:
-    """Histogram of success probability by position."""
+def create_market_value_vs_value_opportunity_chart(df: pd.DataFrame) -> go.Figure:
+    """Scatter plot of market value against recruitment opportunity."""
+
+    fig = px.scatter(
+        df,
+        x="market_value_eur",
+        y="value_opportunity_score",
+        color="recommendation",
+        size="pre_tournament_expected_impact_score",
+        hover_name="player_name",
+        hover_data=["country", "club", "position", "age", "market_value_source"],
+        labels={"market_value_eur": "Market value (EUR)", "value_opportunity_score": "Value opportunity score"},
+    )
+    fig.update_layout(height=470, margin=dict(l=10, r=20, t=20, b=20), xaxis_tickprefix="EUR ")
+    return fig
+
+
+def create_age_vs_value_opportunity_chart(df: pd.DataFrame) -> go.Figure:
+    """Show age profile versus value opportunity."""
+
+    fig = px.scatter(
+        df,
+        x="age",
+        y="value_opportunity_score",
+        color="position",
+        size="pre_tournament_expected_impact_score",
+        hover_name="player_name",
+        hover_data=["country", "club", "market_value_eur", "recommendation"],
+        labels={"age": "Age", "value_opportunity_score": "Value opportunity score"},
+    )
+    fig.update_layout(height=430, margin=dict(l=10, r=20, t=20, b=20))
+    return fig
+
+
+def create_predicted_vs_actual_impact_chart(df: pd.DataFrame) -> go.Figure:
+    """Compare pre-tournament expected impact with actual tournament impact."""
+
+    chart_df = df[df["actual_tournament_impact_score"].notna()].copy()
+    if chart_df.empty:
+        chart_df = pd.DataFrame(
+            {
+                "pre_tournament_expected_impact_score": [0, 100],
+                "actual_tournament_impact_score": [0, 100],
+                "player_name": ["Pending", "Pending"],
+                "performance_outcome": ["Pending", "Pending"],
+            }
+        )
+    fig = px.scatter(
+        chart_df,
+        x="pre_tournament_expected_impact_score",
+        y="actual_tournament_impact_score",
+        color="performance_outcome",
+        hover_name="player_name",
+        hover_data=[col for col in ["country", "club", "position", "performance_delta"] if col in chart_df.columns],
+        labels={
+            "pre_tournament_expected_impact_score": "Pre-tournament expected impact",
+            "actual_tournament_impact_score": "Actual tournament impact",
+        },
+    )
+    fig.add_trace(
+        go.Scatter(
+            x=[0, 100],
+            y=[0, 100],
+            mode="lines",
+            name="Expectation line",
+            line=dict(color="#94a3b8", dash="dash"),
+        )
+    )
+    fig.update_layout(height=430, margin=dict(l=10, r=20, t=20, b=20))
+    return fig
+
+
+def create_performance_delta_distribution_chart(df: pd.DataFrame) -> go.Figure:
+    """Histogram of actual minus expected impact."""
+
+    chart_df = df[df["performance_delta"].notna()]
+    if chart_df.empty:
+        chart_df = pd.DataFrame({"performance_delta": [0], "performance_outcome": ["Pending"]})
+    fig = px.histogram(
+        chart_df,
+        x="performance_delta",
+        color="performance_outcome",
+        nbins=24,
+        labels={"performance_delta": "Actual impact minus expected impact"},
+    )
+    fig.update_layout(height=390, margin=dict(l=10, r=20, t=20, b=20), barmode="overlay")
+    return fig
+
+
+def create_top_value_opportunities_chart(df: pd.DataFrame) -> go.Figure:
+    """Rank the top value opportunities."""
+
+    chart_df = df.nlargest(20, "value_opportunity_score").sort_values("value_opportunity_score")
+    fig = px.bar(
+        chart_df,
+        y="player_name",
+        x="value_opportunity_score",
+        color="position",
+        orientation="h",
+        hover_data=["country", "club", "market_value_eur", "pre_tournament_expected_impact_score", "recommendation"],
+        labels={"player_name": "Player", "value_opportunity_score": "Value opportunity score"},
+    )
+    fig.update_layout(height=620, margin=dict(l=10, r=20, t=20, b=20), legend_title_text="Position")
+    return fig
+
+
+def create_expected_impact_distribution_chart(df: pd.DataFrame) -> go.Figure:
+    """Histogram of expected impact by position."""
 
     fig = px.histogram(
         df,
-        x="success_probability",
+        x="pre_tournament_expected_impact_score",
         color="position",
         nbins=24,
         opacity=0.78,
-        labels={"success_probability": "Predicted success probability"},
+        labels={"pre_tournament_expected_impact_score": "Pre-tournament expected impact"},
     )
     fig.update_layout(height=430, margin=dict(l=10, r=20, t=20, b=20), barmode="overlay")
     return fig
+
+
+def create_market_value_vs_score_chart(df: pd.DataFrame) -> go.Figure:
+    """Backward-compatible alias for market value versus expected impact."""
+
+    return create_market_value_vs_expected_impact_chart(df)

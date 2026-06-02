@@ -574,7 +574,9 @@ def load_player_data(
 
     processed_path = Path(processed_path)
     if processed_path.exists() and not refresh:
-        return pd.read_csv(processed_path)
+        from preprocessing import finalise_player_outputs
+
+        return finalise_player_outputs(pd.read_csv(processed_path))
 
     if use_real_sources:
         from real_data import save_real_player_data

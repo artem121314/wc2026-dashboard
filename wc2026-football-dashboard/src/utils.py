@@ -60,6 +60,8 @@ def get_risks(player: pd.Series, limit: int = 3) -> list[str]:
         ("possession risk", float(player.get("turnover_control_score", 50))),
         ("club-level context", float(player.get("club_level_score", 50))),
         ("role-fit certainty", float(player.get("role_fit_score", 50))),
+        ("injury availability", float(player.get("availability_score", player.get("injury_availability_score", 100)))),
+        ("market-value efficiency", float(player.get("value_efficiency_score", 50))),
     ]
     candidates.sort(key=lambda item: item[1])
     return [label for label, score in candidates[:limit] if score < 62] or ["no major red flags in the current inputs"]
@@ -72,9 +74,9 @@ def scouting_summary(player: pd.Series) -> str:
     strengths_text = ", ".join(strengths[:-1]) + f" and {strengths[-1]}" if len(strengths) > 1 else strengths[0]
     return (
         f"{player['player_name']} profiles as a {player['best_profile']}. "
-        f"His strongest areas are {strengths_text}. Based on current indicators, age, playing time "
-        f"and recent performance, the model estimates a {player['success_probability']:.0f}% probability "
-        "of a successful World Cup."
+        f"His strongest areas are {strengths_text}. The dashboard estimates a "
+        f"{player['pre_tournament_expected_impact_score']:.0f}/100 pre-tournament World Cup impact score "
+        f"and a {player['value_opportunity_score']:.0f}/100 value opportunity score."
     )
 
 
@@ -94,7 +96,8 @@ def similar_players(df: pd.DataFrame, player: pd.Series, n: int = 5) -> pd.DataF
         "progression_score",
         "defensive_score",
         "possession_score",
-        "success_probability",
+        "pre_tournament_expected_impact_score",
+        "value_opportunity_score",
     ]
     distance = 0
     for col in score_cols:

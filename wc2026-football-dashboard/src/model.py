@@ -1,171 +1,274 @@
-"""Transparent success prediction utilities for the dashboard."""
+"""Model-based expected World Cup impact utilities."""
 
 from __future__ import annotations
 
+from pathlib import Path
+from typing import Any
+
 import numpy as np
 import pandas as pd
-from sklearn.ensemble import GradientBoostingClassifier, RandomForestClassifier
-from sklearn.linear_model import LogisticRegression
-from sklearn.metrics import roc_auc_score
+from sklearn.compose import ColumnTransformer
+from sklearn.ensemble import GradientBoostingRegressor, RandomForestRegressor
+from sklearn.impute import SimpleImputer
+from sklearn.linear_model import Ridge
+from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 from sklearn.model_selection import train_test_split
 from sklearn.pipeline import Pipeline
-from sklearn.preprocessing import StandardScaler
+from sklearn.preprocessing import OneHotEncoder, StandardScaler
 
 
-MODEL_FEATURES = [
-    "overall_score",
-    "national_team_strength",
-    "expected_minutes_score",
-    "best_profile_score",
-    "tactical_fit_score",
-    "injury_availability_score",
-    "draw_context_score",
-    "final_squad_selection_score",
-    "market_value_score",
-    "age_curve_score",
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+HISTORICAL_TRAINING_PATH = PROJECT_ROOT / "data" / "historical" / "world_cup_player_training_data.csv"
+FALLBACK_WARNING = (
+    "Historical training data is not available yet. The dashboard is currently using a transparent baseline "
+    "expected-impact score."
+)
+
+EXPECTED_IMPACT_FEATURES = [
+    "age",
+    "position",
+    "market_value_before_tournament",
     "club_level_score",
+    "league_strength_score",
+    "club_minutes_previous_season",
+    "goals_previous_season",
+    "assists_previous_season",
+    "national_team_caps",
+    "expected_starter_score",
+    "national_team_strength",
+    "group_difficulty_score",
+    "injury_availability_score",
     "recent_form_score",
-    "market_value_eur",
-    "minutes",
-    "attacking_score",
-    "creativity_score",
-    "progression_score",
-    "defensive_score",
-    "possession_score",
+    "role_fit_score",
 ]
 
+NUMERIC_FEATURES = [feature for feature in EXPECTED_IMPACT_FEATURES if feature != "position"]
+CATEGORICAL_FEATURES = ["position"]
 
-HEURISTIC_COMPONENTS = {
-    "Current performance": ("current_performance_score", 0.18),
-    "Expected minutes": ("expected_minutes_score", 0.15),
-    "Tactical fit": ("tactical_fit_score", 0.14),
-    "Role fit": ("role_fit_score", 0.13),
-    "Injury availability": ("injury_availability_score", 0.12),
-    "National team strength": ("national_team_strength", 0.10),
-    "Tournament draw": ("draw_context_score", 0.08),
-    "Age curve": ("age_curve_score", 0.05),
-    "Club level": ("club_level_score", 0.04),
-    "Recent form": ("recent_form_score", 0.04),
-    "Final squad selection": ("final_squad_selection_score", 0.03),
-    "Market value": ("market_value_score", 0.01),
+BASELINE_COMPONENTS = {
+    "Current performance": ("current_performance_score", 0.25),
+    "Expected minutes": ("expected_minutes_score", 0.20),
+    "Role fit": ("role_fit_score", 0.15),
+    "National team context": ("national_team_context_score", 0.15),
+    "Tournament draw": ("tournament_draw_score", 0.10),
+    "Availability": ("availability_score", 0.10),
+    "Age upside": ("age_upside_score", 0.05),
 }
 
 
-def create_success_target(df: pd.DataFrame, threshold: float = 72) -> pd.Series:
-    """Use live tournament target when available, otherwise pre-tournament target."""
+def load_historical_training_data(path: Path | str = HISTORICAL_TRAINING_PATH) -> pd.DataFrame:
+    """Load historical World Cup player training rows if the file is available."""
 
-    if "actual_success_target" in df.columns:
-        actual = pd.to_numeric(df["actual_success_target"], errors="coerce")
-        if actual.notna().sum() >= 30 and actual.nunique(dropna=True) > 1:
-            return actual.fillna(0).astype(int)
-    return (df["success_score"] >= threshold).astype(int)
-
-
-def get_target_source(df: pd.DataFrame) -> str:
-    """Describe whether the model is using live or pre-tournament labels."""
-
-    if "actual_success_target" in df.columns:
-        actual = pd.to_numeric(df["actual_success_target"], errors="coerce")
-        if actual.notna().sum() >= 30 and actual.nunique(dropna=True) > 1:
-            return "live tournament target"
-    return "pre-tournament target"
+    path = Path(path)
+    if not path.exists():
+        return pd.DataFrame()
+    try:
+        data = pd.read_csv(path)
+    except pd.errors.EmptyDataError:
+        return pd.DataFrame()
+    if data.empty or "actual_tournament_impact_score" not in data.columns:
+        return pd.DataFrame()
+    return data
 
 
-def train_success_model(
-    df: pd.DataFrame,
-    model_type: str = "logistic_regression",
-    random_state: int = 26,
-) -> dict[str, object]:
-    """Train a transparent classifier against live or pre-tournament target."""
+def _coalesce_feature(df: pd.DataFrame, target: str, aliases: list[str], default: Any) -> pd.Series:
+    values = pd.Series(pd.NA, index=df.index)
+    for alias in [target, *aliases]:
+        if alias in df.columns:
+            candidate = df[alias]
+            if target == "position":
+                values = candidate.combine_first(values)
+            else:
+                values = pd.to_numeric(values, errors="coerce").combine_first(pd.to_numeric(candidate, errors="coerce"))
+    return values.fillna(default)
 
-    available_features = [col for col in MODEL_FEATURES if col in df.columns]
-    model_df = df[available_features].copy()
-    model_df["market_value_eur"] = np.log1p(model_df["market_value_eur"])
-    y = create_success_target(df)
-    target_source = get_target_source(df)
 
-    if y.nunique() < 2 or len(df) < 30:
-        return {
-            "model": None,
-            "model_type": model_type,
-            "features": available_features,
-            "auc": None,
-            "target": y,
-            "target_source": target_source,
-            "feature_importance": pd.DataFrame(),
-        }
+def prepare_expected_impact_features(df: pd.DataFrame) -> pd.DataFrame:
+    """Map current or historical data into the model feature schema."""
 
-    X_train, X_test, y_train, y_test = train_test_split(
-        model_df,
-        y,
-        test_size=0.25,
-        random_state=random_state,
-        stratify=y,
+    mapped = pd.DataFrame(index=df.index)
+    mapped["age"] = _coalesce_feature(df, "age", [], 26)
+    mapped["position"] = _coalesce_feature(df, "position", [], "Unknown").fillna("Unknown").astype(str)
+    mapped["market_value_before_tournament"] = _coalesce_feature(
+        df,
+        "market_value_before_tournament",
+        ["market_value_eur"],
+        0,
     )
+    mapped["club_level_score"] = _coalesce_feature(df, "club_level_score", [], 55)
+    mapped["league_strength_score"] = _coalesce_feature(
+        df,
+        "league_strength_score",
+        ["club_level_score"],
+        55,
+    )
+    mapped["club_minutes_previous_season"] = _coalesce_feature(
+        df,
+        "club_minutes_previous_season",
+        ["minutes"],
+        0,
+    )
+    mapped["goals_previous_season"] = _coalesce_feature(df, "goals_previous_season", ["goals"], 0)
+    mapped["assists_previous_season"] = _coalesce_feature(df, "assists_previous_season", ["assists"], 0)
+    mapped["national_team_caps"] = _coalesce_feature(df, "national_team_caps", ["caps"], 0)
+    mapped["expected_starter_score"] = _coalesce_feature(
+        df,
+        "expected_starter_score",
+        ["expected_minutes_score"],
+        50,
+    )
+    mapped["national_team_strength"] = _coalesce_feature(df, "national_team_strength", [], 55)
+    mapped["group_difficulty_score"] = _coalesce_feature(
+        df,
+        "group_difficulty_score",
+        ["tournament_draw_score", "draw_context_score"],
+        55,
+    )
+    mapped["injury_availability_score"] = _coalesce_feature(
+        df,
+        "injury_availability_score",
+        ["availability_score"],
+        100,
+    )
+    mapped["recent_form_score"] = _coalesce_feature(df, "recent_form_score", [], 50)
+    mapped["role_fit_score"] = _coalesce_feature(df, "role_fit_score", ["best_profile_score"], 50)
 
-    if model_type == "random_forest":
-        model = RandomForestClassifier(n_estimators=250, max_depth=5, random_state=random_state)
-    elif model_type == "gradient_boosting":
-        model = GradientBoostingClassifier(random_state=random_state)
+    mapped["market_value_before_tournament"] = np.log1p(
+        pd.to_numeric(mapped["market_value_before_tournament"], errors="coerce").fillna(0).clip(lower=0)
+    )
+    for feature in NUMERIC_FEATURES:
+        mapped[feature] = pd.to_numeric(mapped[feature], errors="coerce")
+    return mapped[EXPECTED_IMPACT_FEATURES]
+
+
+def _build_model(model_type: str, random_state: int) -> Pipeline:
+    numeric_steps = [("imputer", SimpleImputer(strategy="median"))]
+    if model_type == "ridge":
+        numeric_steps.append(("scaler", StandardScaler()))
+    preprocessor = ColumnTransformer(
+        transformers=[
+            ("numeric", Pipeline(numeric_steps), NUMERIC_FEATURES),
+            ("categorical", OneHotEncoder(handle_unknown="ignore", sparse_output=False), CATEGORICAL_FEATURES),
+        ]
+    )
+    if model_type == "ridge":
+        regressor = Ridge(alpha=1.0)
+    elif model_type == "random_forest":
+        regressor = RandomForestRegressor(n_estimators=300, max_depth=8, random_state=random_state)
     else:
-        model = Pipeline(
-            [
-                ("scaler", StandardScaler()),
-                ("classifier", LogisticRegression(max_iter=1000, random_state=random_state)),
-            ]
-        )
+        regressor = GradientBoostingRegressor(random_state=random_state)
+    return Pipeline([("features", preprocessor), ("regressor", regressor)])
 
-    model.fit(X_train, y_train)
-    preds = model.predict_proba(X_test)[:, 1]
-    auc = roc_auc_score(y_test, preds) if y_test.nunique() == 2 else None
-    importance = get_feature_importance(model, available_features, model_type)
+
+def evaluate_expected_impact_model(y_true: pd.Series, y_pred: np.ndarray | pd.Series) -> dict[str, float]:
+    """Evaluate expected-impact predictions with regression metrics."""
 
     return {
-        "model": model,
-        "model_type": model_type,
-        "features": available_features,
-        "auc": auc,
-        "target": y,
-        "target_source": target_source,
-        "feature_importance": importance,
+        "mae": float(mean_absolute_error(y_true, y_pred)),
+        "rmse": float(np.sqrt(mean_squared_error(y_true, y_pred))),
+        "r2": float(r2_score(y_true, y_pred)),
     }
 
 
-def get_feature_importance(model: object, features: list[str], model_type: str) -> pd.DataFrame:
-    """Extract model importances or coefficients."""
+def _empty_training_result(model_type: str = "gradient_boosting") -> dict[str, object]:
+    return {
+        "model": None,
+        "model_type": model_type,
+        "model_available": False,
+        "target_source": "baseline fallback",
+        "warning": FALLBACK_WARNING,
+        "metrics": pd.DataFrame(columns=["model", "mae", "rmse", "r2"]),
+        "feature_importance": pd.DataFrame(columns=["feature", "importance"]),
+    }
+
+
+def train_expected_impact_model(
+    historical_data: pd.DataFrame | None = None,
+    model_type: str = "gradient_boosting",
+    random_state: int = 26,
+) -> dict[str, object]:
+    """Train supervised expected-impact regressors on historical World Cup data."""
+
+    training_data = load_historical_training_data() if historical_data is None else historical_data.copy()
+    if training_data.empty:
+        return _empty_training_result(model_type)
+
+    y = pd.to_numeric(training_data["actual_tournament_impact_score"], errors="coerce")
+    valid = y.notna()
+    training_data = training_data.loc[valid].copy()
+    y = y.loc[valid].clip(0, 100)
+    if len(training_data) < 30 or y.nunique() < 2:
+        return _empty_training_result(model_type)
+
+    X = prepare_expected_impact_features(training_data)
+    X_train, X_test, y_train, y_test = train_test_split(
+        X,
+        y,
+        test_size=0.25,
+        random_state=random_state,
+    )
+
+    model_names = ["ridge", "random_forest", "gradient_boosting"]
+    trained_models: dict[str, Pipeline] = {}
+    metrics = []
+    for name in model_names:
+        candidate = _build_model(name, random_state)
+        candidate.fit(X_train, y_train)
+        preds = np.clip(candidate.predict(X_test), 0, 100)
+        trained_models[name] = candidate
+        metrics.append({"model": name, **evaluate_expected_impact_model(y_test, preds)})
+
+    metrics_df = pd.DataFrame(metrics).sort_values("mae", ascending=True).reset_index(drop=True)
+    selected_name = model_type if model_type in trained_models else str(metrics_df.iloc[0]["model"])
+    selected_model = trained_models[selected_name]
+
+    return {
+        "model": selected_model,
+        "all_models": trained_models,
+        "model_type": selected_name,
+        "model_available": True,
+        "target_source": "historical World Cup actual_tournament_impact_score",
+        "warning": "",
+        "metrics": metrics_df,
+        "feature_importance": get_feature_importance(selected_model, selected_name),
+    }
+
+
+def get_feature_importance(model: Pipeline | None, model_type: str) -> pd.DataFrame:
+    """Extract regressor importances or coefficients."""
 
     if model is None:
         return pd.DataFrame(columns=["feature", "importance"])
 
-    if model_type == "logistic_regression":
-        classifier = model.named_steps["classifier"]
-        values = classifier.coef_[0]
+    feature_names = model.named_steps["features"].get_feature_names_out()
+    regressor = model.named_steps["regressor"]
+    if model_type == "ridge":
+        values = getattr(regressor, "coef_", np.zeros(len(feature_names)))
     else:
-        values = getattr(model, "feature_importances_", np.zeros(len(features)))
+        values = getattr(regressor, "feature_importances_", np.zeros(len(feature_names)))
 
-    importance = pd.DataFrame({"feature": features, "importance": values})
+    importance = pd.DataFrame({"feature": feature_names, "importance": values})
     importance["abs_importance"] = importance["importance"].abs()
     return importance.sort_values("abs_importance", ascending=False).drop(columns="abs_importance")
 
 
-def predict_success_probabilities(df: pd.DataFrame, trained: dict[str, object]) -> pd.Series:
-    """Return model probabilities, falling back to heuristic probabilities."""
+def predict_expected_impact(df: pd.DataFrame, trained: dict[str, object]) -> pd.Series:
+    """Predict expected World Cup impact, falling back to the baseline score."""
 
+    fallback = pd.to_numeric(df.get("baseline_expected_impact_score"), errors="coerce").fillna(50)
     model = trained.get("model")
-    features = trained.get("features", [])
-    if model is None or not features:
-        return df["success_probability"]
-    X = df[features].copy()
-    if "market_value_eur" in X.columns:
-        X["market_value_eur"] = np.log1p(X["market_value_eur"])
-    return pd.Series(model.predict_proba(X)[:, 1] * 100, index=df.index).round(1)
+    if model is None:
+        return fallback.clip(0, 100).round(1)
+
+    X = prepare_expected_impact_features(df)
+    return pd.Series(np.clip(model.predict(X), 0, 100), index=df.index).round(1)
 
 
 def explain_prediction(player_row: pd.Series) -> dict[str, object]:
-    """Explain one prediction using the transparent heuristic components."""
+    """Explain one expected-impact estimate through the transparent baseline."""
 
     factors = []
-    for label, (col, weight) in HEURISTIC_COMPONENTS.items():
+    for label, (col, weight) in BASELINE_COMPONENTS.items():
         value = float(player_row.get(col, 50))
         contribution = value * weight
         factors.append(
@@ -189,14 +292,16 @@ def explain_prediction(player_row: pd.Series) -> dict[str, object]:
 
 
 def confidence_level(player_row: pd.Series) -> str:
-    """Simple confidence band based on sample size and input consistency."""
+    """Simple confidence band based on data availability and model source."""
 
+    if str(player_row.get("model_expected_impact_source", "")).startswith("historical"):
+        return "Model-based"
     minutes = float(player_row.get("minutes", 0))
     expected_minutes = float(player_row.get("expected_minutes_score", 50))
     recent_form = float(player_row.get("recent_form_score", 50))
     confidence_score = 0.55 * min(minutes / 2400, 1) * 100 + 0.25 * expected_minutes + 0.20 * recent_form
     if confidence_score >= 76:
-        return "High"
+        return "High baseline"
     if confidence_score >= 58:
-        return "Medium"
-    return "Low"
+        return "Medium baseline"
+    return "Low baseline"

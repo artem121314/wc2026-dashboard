@@ -4,8 +4,13 @@ from __future__ import annotations
 
 import pandas as pd
 
-from feature_engineering import calculate_all_features, calculate_success_score
+from feature_engineering import (
+    calculate_all_features,
+    calculate_expected_impact_scores,
+    calculate_value_opportunity_score,
+)
 from player_profiles import calculate_profile_scores
+from tournament_impact import calculate_actual_tournament_impact_score
 
 
 REQUIRED_COLUMNS = [
@@ -60,6 +65,10 @@ def clean_player_data(df: pd.DataFrame) -> pd.DataFrame:
         "injury_status",
         "injury_source_url",
         "market_value_source",
+        "model_expected_impact_source",
+        "model_warning",
+        "performance_outcome",
+        "recommendation",
         "latest_market_value_date",
         "salimt_latest_market_value_date",
         "latest_value_competition_id",
@@ -100,11 +109,38 @@ def clean_player_data(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
+def apply_expected_impact_model(df: pd.DataFrame) -> pd.DataFrame:
+    """Apply historical expected-impact model when available, otherwise baseline."""
+
+    from model import predict_expected_impact, train_expected_impact_model
+
+    df = df.copy()
+    model_summary = train_expected_impact_model()
+    df["pre_tournament_expected_impact_score"] = predict_expected_impact(df, model_summary)
+    if model_summary.get("model_available"):
+        df["model_expected_impact_source"] = "historical_model"
+        df["model_warning"] = ""
+    else:
+        df["model_expected_impact_source"] = "baseline_expected_impact_score"
+        df["model_warning"] = str(model_summary.get("warning", ""))
+    df["historical_model_available"] = bool(model_summary.get("model_available", False))
+    return df
+
+
+def finalise_player_outputs(df: pd.DataFrame, strategy: str = "Balanced club") -> pd.DataFrame:
+    """Calculate expected impact, actual impact validation, and opportunity fields."""
+
+    df = calculate_expected_impact_scores(df)
+    df = apply_expected_impact_model(df)
+    df = calculate_actual_tournament_impact_score(df)
+    df = calculate_value_opportunity_score(df, strategy=strategy)
+    return df.sort_values("value_opportunity_score", ascending=False).reset_index(drop=True)
+
+
 def prepare_player_data(df: pd.DataFrame) -> pd.DataFrame:
-    """Clean data, engineer scores, assign profiles, and calculate success score."""
+    """Clean data, engineer features, assign profiles, and calculate model outputs."""
 
     df = clean_player_data(df)
     df = calculate_all_features(df)
     df = calculate_profile_scores(df)
-    df = calculate_success_score(df)
-    return df.sort_values("success_probability", ascending=False).reset_index(drop=True)
+    return finalise_player_outputs(df)
