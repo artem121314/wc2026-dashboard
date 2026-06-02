@@ -17,3 +17,8 @@ outputs/reports/*
 data/raw/*
 !data/raw/.gitkeep
 !data/raw/injury_status.csv
+!data/raw/current_player_pool.csv
+!data/raw/market_values.csv
+!data/raw/national_team_context.csv
+!data/raw/player_performance_inputs.csv
+!data/raw/tournament_match_data.csv

@@ -40,6 +40,14 @@ def _source_status(spec_key: str) -> dict[str, Any]:
         rows = len(data)
         missing_columns = [col for col in spec.required_columns if col not in data.columns]
     available = exists and rows > 0 and not missing_columns
+    if available:
+        status = "available"
+    elif exists and spec_key == "tournament_match_data":
+        status = "pending"
+    elif exists and rows == 0:
+        status = "empty"
+    else:
+        status = "missing"
     return {
         "name": spec.name,
         "path": str(spec.path),
@@ -47,7 +55,7 @@ def _source_status(spec_key: str) -> dict[str, Any]:
         "rows": rows,
         "missing_columns": missing_columns,
         "available": available,
-        "status": "available" if available else "missing",
+        "status": status,
         "required_for_refresh": spec.required_for_refresh,
         "description": spec.description,
     }
@@ -99,12 +107,14 @@ def validate_raw_data(raw_data: dict[str, pd.DataFrame] | None = None) -> dict[s
         if "market_value_eur" not in current.columns and (
             market.empty or not {"player_name", "market_value_eur"}.issubset(market.columns)
         ):
-            errors.append("Market value data is required via current_player_pool.csv or market_values.csv.")
+            warnings.append(
+                "Market value data is unavailable; value efficiency and value opportunity scores will be disabled."
+            )
         if "national_team_strength" not in current.columns and (
             national.empty or not {"country", "national_team_strength"}.issubset(national.columns)
         ):
-            errors.append(
-                "National team strength is required via current_player_pool.csv or national_team_context.csv."
+            warnings.append(
+                "National team strength is unavailable; baseline expected impact may be disabled."
             )
     return {"warnings": warnings, "errors": errors}
 
@@ -112,12 +122,21 @@ def validate_raw_data(raw_data: dict[str, pd.DataFrame] | None = None) -> dict[s
 def _merge_optional_sources(player_pool: pd.DataFrame, raw_data: dict[str, pd.DataFrame]) -> pd.DataFrame:
     df = player_pool.copy()
 
+    performance_inputs = raw_data.get("player_performance_inputs", pd.DataFrame())
+    if not performance_inputs.empty:
+        merge_cols = ["player_name"]
+        if "country" in performance_inputs.columns and "country" in df.columns:
+            merge_cols.append("country")
+        performance_cols = [col for col in performance_inputs.columns if col not in merge_cols]
+        df = df.drop(columns=[col for col in performance_cols if col in df.columns], errors="ignore")
+        df = df.merge(performance_inputs[[*merge_cols, *performance_cols]], on=merge_cols, how="left")
+
     market_values = raw_data.get("market_values", pd.DataFrame())
     if not market_values.empty:
         merge_cols = ["player_name"]
         if "country" in market_values.columns and "country" in df.columns:
             merge_cols.append("country")
-        value_cols = [col for col in ["market_value_eur", "market_value_source"] if col in market_values.columns]
+        value_cols = [col for col in market_values.columns if col not in merge_cols]
         df = df.drop(columns=[col for col in value_cols if col in df.columns], errors="ignore")
         df = df.merge(market_values[[*merge_cols, *value_cols]], on=merge_cols, how="left")
 
@@ -167,6 +186,16 @@ def save_processed_data(df: pd.DataFrame, path: Path | str = PROCESSED_DASHBOARD
         "last_refresh_utc": datetime.now(timezone.utc).isoformat(),
         "processed_path": str(path),
         "rows": int(len(df)),
+        "missing_market_values": int(pd.to_numeric(df.get("market_value_eur"), errors="coerce").isna().sum())
+        if "market_value_eur" in df.columns
+        else None,
+        "expected_impact_available": int(df["pre_tournament_expected_impact_score"].notna().sum())
+        if "pre_tournament_expected_impact_score" in df.columns
+        else 0,
+        "actual_tournament_impact_available": int(df["actual_tournament_impact_score"].notna().sum())
+        if "actual_tournament_impact_score" in df.columns
+        else 0,
+        "refresh_source": "raw files",
         "data_status": check_data_availability(),
     }
     MANIFEST_PATH.write_text(json.dumps(manifest, indent=2), encoding="utf-8")
@@ -210,10 +239,16 @@ def load_processed_data(path: Path | str = PROCESSED_DASHBOARD_PATH) -> pd.DataF
 def get_last_refresh_timestamp() -> str:
     """Return the latest refresh timestamp from the manifest if available."""
 
+    manifest = get_refresh_manifest()
+    return str(manifest.get("last_refresh_utc", "")) if manifest else ""
+
+
+def get_refresh_manifest() -> dict[str, Any]:
+    """Return the latest refresh manifest if available."""
+
     if not MANIFEST_PATH.exists():
-        return ""
+        return {}
     try:
-        manifest = json.loads(MANIFEST_PATH.read_text(encoding="utf-8"))
+        return json.loads(MANIFEST_PATH.read_text(encoding="utf-8"))
     except json.JSONDecodeError:
-        return ""
-    return str(manifest.get("last_refresh_utc", ""))
+        return {}

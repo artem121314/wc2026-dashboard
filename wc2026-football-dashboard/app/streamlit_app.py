@@ -13,7 +13,7 @@ if str(SRC_PATH) not in sys.path:
     sys.path.insert(0, str(SRC_PATH))
 
 from data_loader import load_player_data, refresh_player_data
-from data_pipeline import check_data_availability, get_last_refresh_timestamp
+from data_pipeline import check_data_availability, get_last_refresh_timestamp, get_refresh_manifest
 from feature_engineering import VALUE_STRATEGIES, calculate_value_opportunity_score
 from model import FALLBACK_WARNING, train_expected_impact_model
 from player_profiles import PLAYER_PROFILES, PROFILE_ELIGIBILITY, get_eligible_positions, get_profile_score_column
@@ -186,25 +186,74 @@ def apply_sidebar_filters(df: pd.DataFrame) -> pd.DataFrame:
     return filtered
 
 
-def render_data_status_panel(model_summary: dict[str, object]) -> None:
+def render_data_status_panel(model_summary: dict[str, object], df: pd.DataFrame | None = None) -> None:
     status = check_data_availability()
+    manifest = get_refresh_manifest()
     last_refresh = get_last_refresh_timestamp() or "No refresh manifest found"
-    st.markdown("#### Data status")
-    data_rows = [
-        ("Current player pool", status_label(status["current_player_pool"])),
-        ("Market values", status_label(status["market_values"])),
-        ("Historical training data", status_label(status["historical_training"])),
-        ("Tournament match data", status_label(status["tournament_match_data"], pending_when_missing=True)),
-        ("Processed dashboard data", status_label(status["processed_dashboard"])),
-        ("Last refresh timestamp", last_refresh),
-    ]
-    st.dataframe(pd.DataFrame(data_rows, columns=["Input", "Status"]), hide_index=True, width="stretch")
 
-    baseline_available = status["processed_dashboard"].get("available", False)
-    actual_available = status["tournament_match_data"].get("available", False)
+    def file_status(key: str, pending_when_unavailable: bool = False) -> str:
+        item = status.get(key, {})
+        state = str(item.get("status", "missing"))
+        if pending_when_unavailable and state in {"missing", "empty", "pending"}:
+            return "pending"
+        return state
+
+    def row_count(key: str) -> int:
+        return int(status.get(key, {}).get("rows", 0) or 0)
+
+    st.markdown("#### Data files")
+    data_rows = [
+        ("current_player_pool.csv", file_status("current_player_pool"), row_count("current_player_pool")),
+        ("market_values.csv", file_status("market_values"), row_count("market_values")),
+        ("national_team_context.csv", file_status("national_team_context"), row_count("national_team_context")),
+        ("player_performance_inputs.csv", file_status("player_performance_inputs"), row_count("player_performance_inputs")),
+        ("tournament_match_data.csv", file_status("tournament_match_data", pending_when_unavailable=True), row_count("tournament_match_data")),
+        ("world_cup_player_training_data.csv", file_status("historical_training"), row_count("historical_training")),
+        ("player_dashboard_data.csv", file_status("processed_dashboard"), row_count("processed_dashboard")),
+    ]
+    st.dataframe(pd.DataFrame(data_rows, columns=["File", "Status", "Rows"]), hide_index=True, width="stretch")
+
+    if df is None:
+        df = pd.DataFrame()
+
+    expected_count = (
+        int(df["pre_tournament_expected_impact_score"].notna().sum())
+        if "pre_tournament_expected_impact_score" in df.columns
+        else int(manifest.get("expected_impact_available", 0) or 0)
+    )
+    actual_count = (
+        int(df["actual_tournament_impact_score"].notna().sum())
+        if "actual_tournament_impact_score" in df.columns
+        else int(manifest.get("actual_tournament_impact_available", 0) or 0)
+    )
+    missing_market_values = (
+        int(pd.to_numeric(df["market_value_eur"], errors="coerce").isna().sum())
+        if "market_value_eur" in df.columns
+        else manifest.get("missing_market_values", "unknown")
+    )
+    refresh_source = str(manifest.get("refresh_source", "raw files" if status["current_player_pool"].get("available") else "processed fallback"))
+    pipeline_rows = [
+        ("Last refresh timestamp", last_refresh),
+        ("Refresh source", refresh_source),
+        ("Players loaded", f"{len(df):,}" if not df.empty else f"{int(manifest.get('rows', 0) or 0):,}"),
+        ("Missing market values", missing_market_values),
+        ("Expected impact available", f"{expected_count:,}"),
+        ("Actual tournament impact available", f"{actual_count:,}"),
+    ]
+    st.markdown("#### Pipeline status")
+    st.dataframe(pd.DataFrame(pipeline_rows, columns=["Metric", "Value"]), hide_index=True, width="stretch")
+
+    baseline_available = "baseline_expected_impact_score" in df.columns and df["baseline_expected_impact_score"].notna().any()
+    actual_available = actual_count > 0
+    if "expected_impact_source" in df.columns:
+        sources = sorted(str(source) for source in df["expected_impact_source"].dropna().unique())
+        expected_source = ", ".join(sources) if sources else "unavailable"
+    else:
+        expected_source = "unavailable"
     model_rows = [
         ("Supervised model", "available" if model_summary.get("model_available") else "disabled"),
         ("Baseline fallback", "available" if baseline_available else "disabled"),
+        ("Expected impact source used", expected_source),
         ("Actual impact validation", "available" if actual_available else "pending"),
     ]
     st.markdown("#### Model status")
@@ -278,7 +327,7 @@ def overview_page(df: pd.DataFrame, filtered_df: pd.DataFrame, model_summary: di
     )
     if not model_summary.get("model_available"):
         st.warning(FALLBACK_WARNING)
-    render_data_status_panel(model_summary)
+    render_data_status_panel(model_summary, df)
 
     kpis = st.columns(5)
     kpis[0].metric("Players", f"{len(df):,}")
@@ -362,11 +411,15 @@ def player_profile_page(df: pd.DataFrame) -> None:
     st.subheader("Player Profile")
     selected_player = st.selectbox("Select player", sorted(df["player_name"].unique()))
     player = df[df["player_name"] == selected_player].iloc[0]
+    def score_text(value: object) -> str:
+        parsed = pd.to_numeric(value, errors="coerce")
+        return "Unavailable" if pd.isna(parsed) else f"{float(parsed):.1f}"
+
     cols = st.columns(5)
     cols[0].metric("Player", player["player_name"])
     cols[1].metric("Market value", format_currency(player["market_value_eur"]))
-    cols[2].metric("Expected impact", f"{player['pre_tournament_expected_impact_score']:.1f}")
-    cols[3].metric("Value opportunity", f"{player['value_opportunity_score']:.1f}")
+    cols[2].metric("Expected impact", score_text(player["pre_tournament_expected_impact_score"]))
+    cols[3].metric("Value opportunity", score_text(player["value_opportunity_score"]))
     cols[4].metric("Risk", player["risk_band"])
     st.markdown(f"<div class='scout-note'>{scouting_summary(player)}</div>", unsafe_allow_html=True)
     st.write(f"Recommendation: **{player['recommendation']}**")
@@ -418,7 +471,7 @@ def main() -> None:
 
     if raw_df.empty:
         st.warning("Processed dashboard data is missing. Click Refresh data after adding real CSV inputs, or run the refresh pipeline.")
-        render_data_status_panel(model_summary)
+        render_data_status_panel(model_summary, raw_df)
         st.stop()
 
     df = calculate_value_opportunity_score(raw_df, strategy=strategy, custom_weights=weights if strategy == "Custom Strategy" else None)

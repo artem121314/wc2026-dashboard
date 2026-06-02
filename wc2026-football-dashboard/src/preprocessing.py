@@ -20,7 +20,6 @@ REQUIRED_COLUMNS = [
     "league",
     "age",
     "position",
-    "market_value_eur",
     "minutes",
     "goals",
     "assists",
@@ -34,10 +33,21 @@ REQUIRED_COLUMNS = [
     "aerial_duels_won",
     "pass_completion_pct",
     "turnovers",
-    "national_team_strength",
     "club_level_score",
     "recent_form_score",
     "expected_minutes_score",
+]
+
+OPTIONAL_NUMERIC_COLUMNS = [
+    "market_value_eur",
+    "national_team_strength",
+    "draw_context_score",
+    "group_difficulty_score",
+    "injury_availability_score",
+    "tactical_fit_score",
+    "final_squad_selection_score",
+    "caps",
+    "international_goals",
 ]
 
 
@@ -50,10 +60,13 @@ def validate_columns(df: pd.DataFrame) -> None:
 
 
 def clean_player_data(df: pd.DataFrame) -> pd.DataFrame:
-    """Basic type coercion, missing value handling, and range clipping."""
+    """Coerce types and clip ranges while preserving missing real values."""
 
     validate_columns(df)
     df = df.copy()
+    for col in OPTIONAL_NUMERIC_COLUMNS:
+        if col not in df.columns:
+            df[col] = pd.NA
     text_cols = [
         "player_name",
         "country",
@@ -94,11 +107,10 @@ def clean_player_data(df: pd.DataFrame) -> pd.DataFrame:
     numeric_cols = [col for col in df.columns if col not in text_cols]
     for col in numeric_cols:
         df[col] = pd.to_numeric(df[col], errors="coerce")
-        df[col] = df[col].fillna(df[col].median() if not df[col].isna().all() else 0)
 
-    df["age"] = df["age"].clip(16, 45).round().astype(int)
-    df["minutes"] = df["minutes"].clip(0, 5000).round().astype(int)
-    df["market_value_eur"] = df["market_value_eur"].clip(lower=0).round().astype(int)
+    df["age"] = df["age"].clip(16, 45).round()
+    df["minutes"] = df["minutes"].clip(0, 5000).round()
+    df["market_value_eur"] = df["market_value_eur"].clip(lower=0).round()
     df["pass_completion_pct"] = df["pass_completion_pct"].clip(0, 100)
 
     score_cols = [

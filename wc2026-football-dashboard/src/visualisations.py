@@ -28,6 +28,17 @@ def _label(metric: str) -> str:
     return METRIC_LABELS.get(metric, metric.replace("_", " ").title())
 
 
+def _available_columns(df: pd.DataFrame, columns: list[str]) -> list[str]:
+    return [col for col in columns if col in df.columns]
+
+
+def _empty_message(text: str, height: int = 430) -> go.Figure:
+    fig = go.Figure()
+    fig.add_annotation(text=text, showarrow=False, x=0.5, y=0.5)
+    fig.update_layout(height=height, xaxis_visible=False, yaxis_visible=False)
+    return fig
+
+
 def create_radar_chart(player: pd.Series, df: pd.DataFrame, metrics: list[str]) -> go.Figure:
     """Create a radar chart for a player's key score metrics."""
 
@@ -163,23 +174,24 @@ def create_market_value_vs_expected_impact_chart(df: pd.DataFrame) -> go.Figure:
 def create_price_to_impact_quadrant_chart(df: pd.DataFrame) -> go.Figure:
     """Price-to-impact recruitment quadrant."""
 
-    chart_df = df[df["pre_tournament_expected_impact_score"].notna()].copy()
+    required = ["market_value_eur", "pre_tournament_expected_impact_score"]
+    if any(col not in df.columns for col in required):
+        return _empty_message("Market value or expected-impact data is unavailable.", height=470)
+    chart_df = df[df["pre_tournament_expected_impact_score"].notna() & df["market_value_eur"].notna()].copy()
     if chart_df.empty:
-        fig = go.Figure()
-        fig.add_annotation(text="Expected-impact data is unavailable.", showarrow=False, x=0.5, y=0.5)
-        fig.update_layout(height=470, xaxis_visible=False, yaxis_visible=False)
-        return fig
+        return _empty_message("Market value or expected-impact data is unavailable.", height=470)
 
     value_threshold = chart_df["market_value_eur"].median()
     impact_threshold = chart_df["pre_tournament_expected_impact_score"].median()
+    size_col = "value_opportunity_score" if chart_df.get("value_opportunity_score", pd.Series(dtype=float)).notna().any() else None
     fig = px.scatter(
         chart_df,
         x="market_value_eur",
         y="pre_tournament_expected_impact_score",
         color="recommendation",
-        size="value_opportunity_score",
+        size=size_col,
         hover_name="player_name",
-        hover_data=["country", "club", "position", "age", "value_efficiency_score"],
+        hover_data=_available_columns(chart_df, ["country", "club", "position", "age", "value_efficiency_score"]),
         labels={
             "market_value_eur": "Market value (EUR)",
             "pre_tournament_expected_impact_score": "Expected WC impact",
@@ -202,14 +214,25 @@ def create_price_to_impact_quadrant_chart(df: pd.DataFrame) -> go.Figure:
 def create_market_value_vs_value_opportunity_chart(df: pd.DataFrame) -> go.Figure:
     """Scatter plot of market value against recruitment opportunity."""
 
+    required = ["market_value_eur", "value_opportunity_score"]
+    if any(col not in df.columns for col in required):
+        return _empty_message("Market value or value-opportunity data is unavailable.", height=470)
+    chart_df = df[df["market_value_eur"].notna() & df["value_opportunity_score"].notna()].copy()
+    if chart_df.empty:
+        return _empty_message("Market value or value-opportunity data is unavailable.", height=470)
+    size_col = (
+        "pre_tournament_expected_impact_score"
+        if chart_df.get("pre_tournament_expected_impact_score", pd.Series(dtype=float)).notna().any()
+        else None
+    )
     fig = px.scatter(
-        df,
+        chart_df,
         x="market_value_eur",
         y="value_opportunity_score",
         color="recommendation",
-        size="pre_tournament_expected_impact_score",
+        size=size_col,
         hover_name="player_name",
-        hover_data=["country", "club", "position", "age", "market_value_source"],
+        hover_data=_available_columns(chart_df, ["country", "club", "position", "age", "market_value_source"]),
         labels={"market_value_eur": "Market value (EUR)", "value_opportunity_score": "Value opportunity score"},
     )
     fig.update_layout(height=470, margin=dict(l=10, r=20, t=20, b=20), xaxis_tickprefix="EUR ")
@@ -219,14 +242,25 @@ def create_market_value_vs_value_opportunity_chart(df: pd.DataFrame) -> go.Figur
 def create_age_vs_value_opportunity_chart(df: pd.DataFrame) -> go.Figure:
     """Show age profile versus value opportunity."""
 
+    required = ["age", "value_opportunity_score"]
+    if any(col not in df.columns for col in required):
+        return _empty_message("Age or value-opportunity data is unavailable.")
+    chart_df = df[df["age"].notna() & df["value_opportunity_score"].notna()].copy()
+    if chart_df.empty:
+        return _empty_message("Age or value-opportunity data is unavailable.")
+    size_col = (
+        "pre_tournament_expected_impact_score"
+        if chart_df.get("pre_tournament_expected_impact_score", pd.Series(dtype=float)).notna().any()
+        else None
+    )
     fig = px.scatter(
-        df,
+        chart_df,
         x="age",
         y="value_opportunity_score",
         color="position",
-        size="pre_tournament_expected_impact_score",
+        size=size_col,
         hover_name="player_name",
-        hover_data=["country", "club", "market_value_eur", "recommendation"],
+        hover_data=_available_columns(chart_df, ["country", "club", "market_value_eur", "recommendation"]),
         labels={"age": "Age", "value_opportunity_score": "Value opportunity score"},
     )
     fig.update_layout(height=430, margin=dict(l=10, r=20, t=20, b=20))
@@ -300,6 +334,8 @@ def create_performance_delta_distribution_chart(df: pd.DataFrame) -> go.Figure:
 def create_top_value_opportunities_chart(df: pd.DataFrame) -> go.Figure:
     """Rank the top value opportunities."""
 
+    if "value_opportunity_score" not in df.columns or df["value_opportunity_score"].dropna().empty:
+        return _empty_message("Value-opportunity data is unavailable.", height=620)
     chart_df = df.nlargest(20, "value_opportunity_score").sort_values("value_opportunity_score")
     fig = px.bar(
         chart_df,
@@ -307,7 +343,10 @@ def create_top_value_opportunities_chart(df: pd.DataFrame) -> go.Figure:
         x="value_opportunity_score",
         color="position",
         orientation="h",
-        hover_data=["country", "club", "market_value_eur", "pre_tournament_expected_impact_score", "recommendation"],
+        hover_data=_available_columns(
+            chart_df,
+            ["country", "club", "market_value_eur", "pre_tournament_expected_impact_score", "recommendation"],
+        ),
         labels={"player_name": "Player", "value_opportunity_score": "Value opportunity score"},
     )
     fig.update_layout(height=620, margin=dict(l=10, r=20, t=20, b=20), legend_title_text="Position")
@@ -332,14 +371,21 @@ def create_expected_impact_distribution_chart(df: pd.DataFrame) -> go.Figure:
 def create_expected_impact_vs_value_efficiency_chart(df: pd.DataFrame) -> go.Figure:
     """Compare expected impact with market-value efficiency."""
 
+    required = ["value_efficiency_score", "pre_tournament_expected_impact_score"]
+    if any(col not in df.columns for col in required):
+        return _empty_message("Expected impact or value-efficiency data is unavailable.")
+    chart_df = df[df["value_efficiency_score"].notna() & df["pre_tournament_expected_impact_score"].notna()].copy()
+    if chart_df.empty:
+        return _empty_message("Expected impact or value-efficiency data is unavailable.")
+    size_col = "value_opportunity_score" if chart_df.get("value_opportunity_score", pd.Series(dtype=float)).notna().any() else None
     fig = px.scatter(
-        df,
+        chart_df,
         x="value_efficiency_score",
         y="pre_tournament_expected_impact_score",
         color="risk_band",
-        size="value_opportunity_score",
+        size=size_col,
         hover_name="player_name",
-        hover_data=["country", "club", "position", "market_value_eur", "recommendation"],
+        hover_data=_available_columns(chart_df, ["country", "club", "position", "market_value_eur", "recommendation"]),
         labels={
             "value_efficiency_score": "Value efficiency",
             "pre_tournament_expected_impact_score": "Expected WC impact",
@@ -362,14 +408,25 @@ def create_recommendation_breakdown_chart(df: pd.DataFrame) -> go.Figure:
 def create_risk_vs_opportunity_matrix(df: pd.DataFrame) -> go.Figure:
     """Show risk score against value opportunity."""
 
+    required = ["risk_score", "value_opportunity_score"]
+    if any(col not in df.columns for col in required):
+        return _empty_message("Risk or value-opportunity data is unavailable.")
+    chart_df = df[df["risk_score"].notna() & df["value_opportunity_score"].notna()].copy()
+    if chart_df.empty:
+        return _empty_message("Risk or value-opportunity data is unavailable.")
+    size_col = (
+        "pre_tournament_expected_impact_score"
+        if chart_df.get("pre_tournament_expected_impact_score", pd.Series(dtype=float)).notna().any()
+        else None
+    )
     fig = px.scatter(
-        df,
+        chart_df,
         x="risk_score",
         y="value_opportunity_score",
         color="recommendation",
-        size="pre_tournament_expected_impact_score",
+        size=size_col,
         hover_name="player_name",
-        hover_data=["country", "club", "age", "market_value_eur", "risk_reason"],
+        hover_data=_available_columns(chart_df, ["country", "club", "age", "market_value_eur", "risk_reason"]),
         labels={"risk_score": "Risk score", "value_opportunity_score": "Value opportunity score"},
     )
     fig.update_layout(height=430, margin=dict(l=10, r=20, t=20, b=20))

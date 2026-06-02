@@ -22,6 +22,7 @@ PROCESSED_DATA_DIR = DATA_ROOT / "processed"
 CURRENT_PLAYER_POOL_PATH = RAW_DATA_DIR / "current_player_pool.csv"
 MARKET_VALUES_PATH = RAW_DATA_DIR / "market_values.csv"
 NATIONAL_TEAM_CONTEXT_PATH = RAW_DATA_DIR / "national_team_context.csv"
+PLAYER_PERFORMANCE_INPUTS_PATH = RAW_DATA_DIR / "player_performance_inputs.csv"
 TOURNAMENT_MATCH_DATA_PATH = RAW_DATA_DIR / "tournament_match_data.csv"
 HISTORICAL_TRAINING_PATH = HISTORICAL_DATA_DIR / "world_cup_player_training_data.csv"
 PROCESSED_DASHBOARD_PATH = PROCESSED_DATA_DIR / "player_dashboard_data.csv"
@@ -47,6 +48,15 @@ DATA_SOURCE_SPECS = {
             "league",
             "age",
             "position",
+        ),
+        required_for_refresh=True,
+        description="Real current player identity, squad and club context.",
+    ),
+    "player_performance_inputs": DataSourceSpec(
+        name="Player performance inputs",
+        path=PLAYER_PERFORMANCE_INPUTS_PATH,
+        required_columns=(
+            "player_name",
             "minutes",
             "goals",
             "assists",
@@ -65,7 +75,7 @@ DATA_SOURCE_SPECS = {
             "expected_minutes_score",
         ),
         required_for_refresh=True,
-        description="Real current player pool and recent senior performance export.",
+        description="Real recent senior performance and model-input export keyed by player_name.",
     ),
     "market_values": DataSourceSpec(
         name="Market values",

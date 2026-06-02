@@ -28,12 +28,30 @@ The Streamlit sidebar includes:
 
 To update actual tournament impact, add new match rows to `data/raw/tournament_match_data.csv` and click Refresh data.
 
+## How To Refresh The Dashboard Data
+
+1. Place real CSV files in `data/raw/`.
+2. Optional: place real curated historical training data in `data/historical/`.
+3. Run the app with `streamlit run app/streamlit_app.py`.
+4. Click `Refresh data` in the Streamlit sidebar.
+5. The app rebuilds `data/processed/player_dashboard_data.csv`.
+6. If `data/raw/tournament_match_data.csv` is missing or empty, actual impact remains `Pending`.
+
+For local development, the same refresh logic is available from the command line:
+
+```bash
+python scripts/refresh_data.py
+```
+
+No synthetic data is used. Missing real data disables only the affected model, score or validation section.
+
 ## Required Real Data Files
 
 Expected local real-data inputs:
 
 ```text
 data/raw/current_player_pool.csv
+data/raw/player_performance_inputs.csv
 data/raw/market_values.csv
 data/raw/national_team_context.csv
 data/raw/tournament_match_data.csv
@@ -42,6 +60,8 @@ data/processed/player_dashboard_data.csv
 ```
 
 The app runs when `data/processed/player_dashboard_data.csv` exists. If it is missing, the dashboard shows a clear warning and asks the user to add real CSV inputs and refresh.
+
+Column-level schemas are documented in `docs/data_schema.md`. Additional source columns can be passed through for auditability, but the pipeline should not fabricate missing values.
 
 ## Historical Training Data Requirements
 
@@ -195,8 +215,11 @@ wc2026-football-dashboard/
 │   ├── raw/
 │   ├── historical/
 │   └── processed/
+├── docs/
+│   └── data_schema.md
 ├── notebooks/
 ├── scripts/
+│   ├── refresh_data.py
 │   └── validate_project.py
 ├── src/
 │   ├── data_loader.py
